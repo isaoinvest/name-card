@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="preconnect" href="https://aframe.io" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      /* 掃描UI樣式 */
+      #scanning-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        background-color: rgba(0, 0, 0, 0.2);
+        opacity: 1;
+        transition: opacity 0.3s;
+      }
+
+      #scanning-overlay.hidden {
+        opacity: 0;
+      }
+
+      /* 掃描框 */
+      .scanner-inner {
+        width: 200px;
+        height: 200px;
+        border: 2px solid rgba(0, 255, 255, 0.7);
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+      }
+
+      /* 掃描線 */
+      .scanner-line {
+        position: absolute;
+        height: 3px;
+        width: 100%;
+        background: linear-gradient(90deg, transparent, #00ffff, #00ffff, transparent);
+        top: 0;
+        animation: scan 2.5s linear infinite;
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+      }
+
+      /* 角落標記 */
+      .corner {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-color: rgba(0, 255, 255, 0.9);
+        border-style: solid;
+        border-width: 0;
+      }
+      .corner-top-left {
+        top: -2px;
+        left: -2px;
+        border-top-width: 3px;
+        border-left-width: 3px;
+      }
+      .corner-top-right {
+        top: -2px;
+        right: -2px;
+        border-top-width: 3px;
+        border-right-width: 3px;
+      }
+      .corner-bottom-left {
+        bottom: -2px;
+        left: -2px;
+        border-bottom-width: 3px;
+        border-left-width: 3px;
+      }
+      .corner-bottom-right {
+        bottom: -2px;
+        right: -2px;
+        border-bottom-width: 3px;
+        border-right-width: 3px;
+      }
+
+      /* 掃描文字 */
+      .scanning-text {
+        position: absolute;
+        bottom: -35px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        text-align: center;
+        font-family: Arial, sans-serif;
+        color: rgba(0, 255, 255, 0.9);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 14px;
+        text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+      }
+
+      /* 持續播放按鈕 */
+      .control-button {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background-color: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: 2px solid rgba(0, 255, 255, 0.7);
+        border-radius: 50px;
+        padding: 10px 16px;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        transition: all 0.3s ease;
+        opacity: 0.9;
+        min-width: 100px;
+        text-align: center;
+      }
+      .control-button:hover {
+        background-color: rgba(0, 0, 0, 0.8);
+        opacity: 1;
+      }
+      .control-button.active {
+        background-color: rgba(0, 195, 255, 0.3);
+      }
+
+      /* 掃描動畫 */
+      @keyframes scan {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(197px); }
+        100% { transform: translateY(0); }
+      }
+
+      /* 全螢幕影片容器 */
+      #fullscreen-video-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 999;
+        display: none;
+        background-color: rgba(0, 0, 0, 0.9);
+        cursor: pointer;
+      }
+      #fullscreen-video-container.visible {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #fullscreen-video {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="control-button" id="continue-play-button">持續播放</button>
+
+    <div id="scanning-overlay">
+      <div class="scanner-inner">
+        <div class="scanner-line"></div>
+        <div class="corner corner-top-left"></div>
+        <div class="corner corner-top-right"></div>
+        <div class="corner corner-bottom-left"></div>
+        <div class="corner corner-bottom-right"></div>
+        <div class="scanning-text">目標掃描中</div>
+      </div>
+    </div>
+    
+    <div id="fullscreen-video-container">
+      <video id="fullscreen-video" playsinline webkit-playsinline></video>
+    </div>
+
+    <a-scene
+      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/參展名片/main/KKtargets.mind;
+                    warmupTolerance: 5;
+                    missTolerance: 10;
+                    filterMinCF: 0.000001; 
+                    filterBeta: 250;
+                    uiScanning: #scanning-overlay;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      loading-screen="enabled: true; dotsColor: #00ffff; backgroundColor: #000000"
+    >
+      <a-assets>
+        <video
+          id="video"
+          src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4"
+          preload="auto"
+          loop
+          crossorigin="anonymous"
+          playsinline
+          webkit-playsinline
+          muted
+        ></video>
+        <video
+          id="video1"
+          src="YOUR_VIDEO1_URL.mp4"
+          preload="auto"
+          loop
+          crossorigin="anonymous"
+          playsinline
+          webkit-playsinline
+          muted
+        ></video>
+      </a-assets>
+
+      <a-camera
+        position="0 0 0"
+        look-controls="enabled: false"
+        cursor="fuse: false; rayOrigin: mouse;"
+        raycaster="far: 10000; objects: .clickable"
+      ></a-camera>
+
+      <a-entity
+        id="target0"
+        mindar-image-target="targetIndex: 0"
+        data-target-aspect-ratio="1.414"
+        fit-video-to-target-ratio="videoSelector: #video0-entity"
+      >
+        <a-video
+          id="video0-entity"
+          src="#video"
+          position="0 0 0"
+          rotation="0 0 0"
+          loop="true"
+        ></a-video>
+      </a-entity>
+
+      <a-entity
+        id="target1"
+        mindar-image-target="targetIndex: 1"
+        data-target-aspect-ratio="1.414"
+        fit-video-to-target-ratio="videoSelector: #video1-entity"
+      >
+        <a-video
+          id="video1-entity"
+          src="#video1"
+          position="0 0 0"
+          rotation="0 0 0"
+          loop="true"
+        ></a-video>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // 等待 A-Frame 載入完成
+      if (window.AFRAME) {
+        initializeApp();
+      } else {
+        window.addEventListener('DOMContentLoaded', function() {
+          if (window.AFRAME) {
+            initializeApp();
+          } else {
+            window.addEventListener('load', initializeApp);
+          }
+        });
+      }
+
+      function initializeApp() {
+        // 自動調整影片比例的 A-Frame 元件
+        AFRAME.registerComponent("fit-video-to-target-ratio", {
+          schema: {
+            videoSelector: { type: "string" },
+          },
+          init: function () {
+            this.el.addEventListener("targetFound", this.onTargetFound.bind(this));
+          },
+          onTargetFound: function () {
+            const videoEntity = this.el.querySelector(this.data.videoSelector);
+            if (!videoEntity) return;
+
+            const ratioString = this.el.dataset.targetAspectRatio;
+            const targetAspectRatio = ratioString ? parseFloat(ratioString) : 1.0;
+            
+            if (!isNaN(targetAspectRatio) && targetAspectRatio > 0) {
+              videoEntity.setAttribute("geometry", {
+                width: 1,
+                height: 1 / targetAspectRatio
+              });
+            }
+          },
+        });
+
+        // 主要應用邏輯
+        const video0El = document.querySelector("#video");
+        const video1El = document.querySelector("#video1");
+        const target0El = document.querySelector("#target0");
+        const target1El = document.querySelector("#target1");
+        const scanningOverlay = document.getElementById("scanning-overlay");
+        const continuePlayButton = document.getElementById("continue-play-button");
+        const fullscreenVideoContainer = document.getElementById("fullscreen-video-container");
+        const fullscreenVideoEl = document.getElementById("fullscreen-video");
+
+        const SCAN_OVERLAY_DELAY = 200;
+
+        const state = {
+          targetCount: 0,
+          overlayTimer: null,
+          audioEnabled: false,
+          continuePlayEnabled: false,
+          lastActiveVideo: null,
+          fullscreenVideoActive: false,
+          hasPlayedOnce: false,
+        };
+
+        // 啟用音訊
+        function enableAudio() {
+          if (state.audioEnabled) return;
+          try {
+            [video0El, video1El, fullscreenVideoEl].forEach(video => {
+              if (video && video.src && !video.src.includes("YOUR_VIDEO1_URL.mp4")) {
+                video.muted = false;
+              }
+            });
+            state.audioEnabled = true;
+          } catch (error) {
+            console.error("啟用音頻失敗:", error);
+          }
+        }
+
+        // 設定音訊處理
+        function setupAudioHandlers() {
+          const enableAudioOnce = () => {
+            enableAudio();
+            document.removeEventListener("touchstart", enableAudioOnce);
+            document.removeEventListener("click", enableAudioOnce);
+          };
+          document.addEventListener("touchstart", enableAudioOnce, { passive: true });
+          document.addEventListener("click", enableAudioOnce);
+        }
+
+        // 處理影片播放
+        function handleVideoPlayback(videoEl, shouldPlay) {
+          if (!videoEl || !videoEl.src || videoEl.src.includes("YOUR_VIDEO1_URL.mp4")) {
+            return Promise.resolve();
+          }
+          
+          if (shouldPlay) {
+            return videoEl.play().catch((error) => {
+              videoEl.muted = true;
+              state.audioEnabled = false;
+              return videoEl.play().catch(() => {});
+            });
+          } else {
+            videoEl.pause();
+            return Promise.resolve();
+          }
+        }
+
+        const playVideo = (videoEl) => handleVideoPlayback(videoEl, true);
+        const pauseVideo = (videoEl) => handleVideoPlayback(videoEl, false);
+
+        // 切換到全螢幕影片
+        function switchToFullscreenVideo(sourceVideoEl) {
+          if (!sourceVideoEl || !sourceVideoEl.src || sourceVideoEl.src.includes("YOUR_VIDEO1_URL.mp4")) return;
+          
+          fullscreenVideoEl.src = sourceVideoEl.src;
+          fullscreenVideoEl.currentTime = sourceVideoEl.currentTime;
+          fullscreenVideoEl.muted = state.audioEnabled ? sourceVideoEl.muted : true;
+          fullscreenVideoContainer.classList.add("visible");
+          state.fullscreenVideoActive = true;
+          fullscreenVideoEl.play().catch(() => {
+            fullscreenVideoEl.muted = true;
+            state.audioEnabled = false;
+            fullscreenVideoEl.play();
+          });
+        }
+
+        // 從全螢幕切換回來
+        function switchFromFullscreenVideo(targetVideoEl) {
+          if (!targetVideoEl || !targetVideoEl.src || targetVideoEl.src.includes("YOUR_VIDEO1_URL.mp4")) return;
+          
+          if (state.fullscreenVideoActive && !fullscreenVideoEl.paused) {
+            targetVideoEl.currentTime = fullscreenVideoEl.currentTime;
+          }
+          fullscreenVideoContainer.classList.remove("visible");
+          state.fullscreenVideoActive = false;
+          fullscreenVideoEl.pause();
+          fullscreenVideoEl.src = "";
+        }
+
+        // 全螢幕影片點擊處理
+        fullscreenVideoContainer.addEventListener("click", () => {
+          if (state.fullscreenVideoActive) {
+            fullscreenVideoContainer.classList.remove("visible");
+            state.fullscreenVideoActive = false;
+            fullscreenVideoEl.pause();
+            fullscreenVideoEl.src = "";
+            state.continuePlayEnabled = false;
+            continuePlayButton.classList.remove("active");
+            continuePlayButton.textContent = "持續播放";
+            
+            if (state.targetCount > 0 && state.lastActiveVideo) {
+              playVideo(state.lastActiveVideo);
+            }
+            
+            if (state.targetCount === 0) {
+              scanningOverlay.classList.remove("hidden");
+            }
+          }
+        });
+
+        // 設定持續播放按鈕
+        continuePlayButton.addEventListener("click", () => {
+          if (!state.hasPlayedOnce) return;
+          
+          state.continuePlayEnabled = !state.continuePlayEnabled;
+          
+          if (state.continuePlayEnabled) {
+            continuePlayButton.classList.add("active");
+            continuePlayButton.textContent = "停止播放";
+            
+            if (state.lastActiveVideo) {
+              if (state.targetCount === 0) {
+                switchToFullscreenVideo(state.lastActiveVideo);
+              } else if (state.lastActiveVideo.paused) {
+                playVideo(state.lastActiveVideo);
+              }
+            }
+            
+            if (state.targetCount === 0) {
+              scanningOverlay.classList.add("hidden");
+            }
+          } else {
+            continuePlayButton.classList.remove("active");
+            continuePlayButton.textContent = "持續播放";
+            
+            if (state.fullscreenVideoActive) {
+              fullscreenVideoContainer.classList.remove("visible");
+              fullscreenVideoEl.pause();
+              fullscreenVideoEl.src = "";
+              state.fullscreenVideoActive = false;
+            }
+            
+            if (state.targetCount === 0) {
+              if (state.lastActiveVideo && !state.lastActiveVideo.paused) {
+                pauseVideo(state.lastActiveVideo);
+              }
+              scanningOverlay.classList.remove("hidden");
+            }
+          }
+        });
+
+        // 目標找到處理
+        const targetFound = (videoEl, otherVideoEl) => {
+          if (!videoEl || videoEl.src.includes("YOUR_VIDEO1_URL.mp4")) return;
+
+          state.targetCount++;
+          state.lastActiveVideo = videoEl;
+          state.hasPlayedOnce = true;
+          
+          if (otherVideoEl) pauseVideo(otherVideoEl);
+
+          if (state.fullscreenVideoActive && fullscreenVideoEl.src === videoEl.src) {
+            switchFromFullscreenVideo(videoEl);
+          }
+
+          playVideo(videoEl);
+          scanningOverlay.classList.add("hidden");
+          
+          if (state.overlayTimer) {
+            clearTimeout(state.overlayTimer);
+            state.overlayTimer = null;
+          }
+        };
+
+        // 目標丟失處理
+        const targetLost = (videoEl) => {
+          if (!videoEl || videoEl.src.includes("YOUR_VIDEO1_URL.mp4")) return;
+
+          if (state.targetCount > 0) state.targetCount--;
+          
+          if (state.continuePlayEnabled && state.targetCount === 0) {
+            switchToFullscreenVideo(videoEl);
+          } else {
+            pauseVideo(videoEl);
+            
+            if (state.targetCount === 0) {
+              if (state.overlayTimer) clearTimeout(state.overlayTimer);
+              
+              state.overlayTimer = setTimeout(() => {
+                if (state.targetCount === 0 && !state.continuePlayEnabled) {
+                  scanningOverlay.classList.remove("hidden");
+                }
+              }, SCAN_OVERLAY_DELAY);
+            }
+          }
+        };
+
+        // 設定目標事件監聽器
+        if (target0El && video0El) {
+          target0El.addEventListener("targetFound", () => targetFound(video0El, video1El));
+          target0El.addEventListener("targetLost", () => targetLost(video0El));
+        }
+
+        if (target1El && video1El && !video1El.src.includes("YOUR_VIDEO1_URL.mp4")) {
+          target1El.addEventListener("targetFound", () => targetFound(video1El, video0El));
+          target1El.addEventListener("targetLost", () => targetLost(video1El));
+        }
+
+        // 頁面可見性變化處理
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") {
+            if (video0El) pauseVideo(video0El);
+            if (video1El && !video1El.src.includes("YOUR_VIDEO1_URL.mp4")) pauseVideo(video1El);
+            if (state.fullscreenVideoActive) fullscreenVideoEl.pause();
+          } else if (document.visibilityState === "visible") {
+            if (state.fullscreenVideoActive) {
+              fullscreenVideoEl.play().catch(() => {});
+            } else if (state.targetCount > 0 && state.lastActiveVideo) {
+              playVideo(state.lastActiveVideo).catch(() => {});
+            }
+          }
+        });
+
+        // 初始化
+        const sceneEl = document.querySelector("a-scene");
+        if (sceneEl.hasLoaded) {
+          setupAudioHandlers();
+        } else {
+          sceneEl.addEventListener('loaded', setupAudioHandlers);
+        }
+      }
+    </script>
+  </body>
+</html>
