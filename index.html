@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
+<title>AR Business Card</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -40,15 +41,15 @@ body {
   device-orientation-permission-ui="enabled: false"
 >
   <a-assets>
-    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" />
-    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" />
-    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" />
-    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" />
-    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" />
-    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" />
-    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" />
-    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" />
-    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline preload="auto"></video>
+    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" />
+    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" />
+    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" />
+    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" />
+    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" />
+    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" />
+    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" />
+    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" />
+    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
     <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
   </a-assets>
 
@@ -90,7 +91,7 @@ body {
       rotation="0 0 0"
     ></a-image>
     
-    <!-- 使用自定義點擊處理來避免跨域問題 -->
+    <!-- 添加alt屬性和更強化的點擊處理 -->
     <a-image
       id="btn-website"
       src="#website"
@@ -100,6 +101,7 @@ body {
       rotation="0 0 0"
       class="clickable"
       custom-click="url: https://isaoinvest.com"
+      alt="Website Link"
     ></a-image>
     
     <a-image
@@ -111,6 +113,7 @@ body {
       rotation="0 0 0"
       class="clickable"
       custom-click="url: mailto:isaoinvest@gmail.com"
+      alt="Email Link"
     ></a-image>
     
     <a-image
@@ -122,6 +125,7 @@ body {
       rotation="0 0 0"
       class="clickable"
       custom-click="url: tel:+886920820259"
+      alt="Phone Link"
     ></a-image>
     
     <a-image
@@ -133,6 +137,7 @@ body {
       rotation="0 0 0"
       class="clickable"
       custom-click="url: https://line.me/R/ti/p/@722fdkca"
+      alt="LINE Link"
     ></a-image>
     
     <a-image
@@ -144,6 +149,7 @@ body {
       rotation="0 0 0"
       class="clickable"
       custom-click="url: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
+      alt="YouTube Link"
     ></a-image>
     
     <a-image
@@ -155,6 +161,7 @@ body {
       rotation="0 0 0"
       class="clickable"
       custom-click="url: https://www.instagram.com/isaoinvest"
+      alt="Instagram Link"
     ></a-image>
     
     <a-image
@@ -166,6 +173,7 @@ body {
       rotation="0 0 0"
       class="clickable"
       custom-click="url: https://www.facebook.com/profile.php?id=61552552833098"
+      alt="Facebook Link"
     ></a-image>
   </a-entity>
 
@@ -184,54 +192,63 @@ body {
 </a-scene>
 
 <script>
-// 自定義點擊處理器來避免跨域問題
-AFRAME.registerComponent('custom-click', {
-  schema: {
-    url: {type: 'string'}
-  },
-  init: function () {
-    var el = this.el;
-    var url = this.data.url;
-    
-    console.log('Custom click handler registered for:', url);
-    
-    // 直接在元素上添加點擊事件
-    el.addEventListener('click', function(event) {
-      console.log('Custom click triggered for:', url);
-      event.stopPropagation();
-      event.preventDefault();
+// 等待A-Frame完全載入後再註冊組件
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded');
+  
+  // 註冊自定義點擊處理器
+  AFRAME.registerComponent('custom-click', {
+    schema: {
+      url: {type: 'string'}
+    },
+    init: function () {
+      var el = this.el;
+      var url = this.data.url;
       
-      try {
-        if (url.startsWith('mailto:') || url.startsWith('tel:')) {
-          window.location.href = url;
-        } else {
-          window.open(url, '_blank');
-        }
-        console.log('Successfully opened:', url);
-      } catch (error) {
-        console.error('Error opening URL:', error);
-      }
-    });
-    
-    // 添加觸摸事件
-    el.addEventListener('touchend', function(event) {
-      console.log('Touch end triggered for:', url);
-      event.stopPropagation();
-      event.preventDefault();
+      console.log('Custom click handler registered for:', url);
       
-      try {
-        if (url.startsWith('mailto:') || url.startsWith('tel:')) {
-          window.location.href = url;
-        } else {
-          window.open(url, '_blank');
-        }
-        console.log('Successfully opened via touch:', url);
-      } catch (error) {
-        console.error('Error opening URL via touch:', error);
-      }
-    });
-  }
-});
+      // 等待元素完全載入
+      el.addEventListener('loaded', () => {
+        console.log('Element loaded:', url);
+        
+        // 直接在元素上添加點擊事件
+        el.addEventListener('click', function(event) {
+          console.log('Custom click triggered for:', url);
+          event.stopPropagation();
+          event.preventDefault();
+          
+          try {
+            if (url.startsWith('mailto:') || url.startsWith('tel:')) {
+              window.location.href = url;
+            } else {
+              window.open(url, '_blank');
+            }
+            console.log('Successfully opened:', url);
+          } catch (error) {
+            console.error('Error opening URL:', error);
+          }
+        });
+        
+        // 添加觸摸事件
+        el.addEventListener('touchend', function(event) {
+          console.log('Touch end triggered for:', url);
+          event.stopPropagation();
+          event.preventDefault();
+          
+          try {
+            if (url.startsWith('mailto:') || url.startsWith('tel:')) {
+              window.location.href = url;
+            } else {
+              window.open(url, '_blank');
+            }
+            console.log('Successfully opened via touch:', url);
+          } catch (error) {
+            console.error('Error opening URL via touch:', error);
+          }
+        });
+      });
+    }
+  });
 
 // 完全按照舊代碼的視頻處理邏輯
 AFRAME.registerComponent("click-handler1", {
@@ -308,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeAnimations();
         
         console.log('AR system fully initialized');
-      }, 2000);
+      }, 3000); // 增加延遲時間
     });
   }
 });
