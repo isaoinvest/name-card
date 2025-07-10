@@ -40,15 +40,15 @@ body {
   device-orientation-permission-ui="enabled: false"
 >
   <a-assets>
-    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" />
-    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" />
-    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" />
-    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" />
-    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" />
-    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" />
-    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" />
-    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" />
-    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
+    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" />
+    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" />
+    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" />
+    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" />
+    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" />
+    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" />
+    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" />
+    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" />
+    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline preload="auto"></video>
     <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
   </a-assets>
 
@@ -90,75 +90,82 @@ body {
       rotation="0 0 0"
     ></a-image>
     
-    <!-- 完全按照舊代碼的按鈕設置 -->
+    <!-- 使用自定義點擊處理來避免跨域問題 -->
     <a-image
+      id="btn-website"
       src="#website"
       width="0.65"
       height="0.25"
       position="0.6 0.4 -1.5"
       rotation="0 0 0"
       class="clickable"
-      link="href: https://isaoinvest.com"
+      custom-click="url: https://isaoinvest.com"
     ></a-image>
     
     <a-image
+      id="btn-email"
       src="#Email"
       width="0.65"
       height="0.25"
       position="0.6 0.1 -1.5"
       rotation="0 0 0"
       class="clickable"
-      link="href: mailto:isaoinvest@gmail.com"
+      custom-click="url: mailto:isaoinvest@gmail.com"
     ></a-image>
     
     <a-image
+      id="btn-phone"
       src="#phone"
       width="0.65"
       height="0.23"
       position="0.6 -0.2 -1.5"
       rotation="0 0 0"
       class="clickable"
-      link="href: tel:+886920820259"
+      custom-click="url: tel:+886920820259"
     ></a-image>
     
     <a-image
+      id="btn-line"
       src="#image-LINE"
       width="0.3"
       height="0.3"
       position="0.6 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      link="href: https://line.me/R/ti/p/@722fdkca"
+      custom-click="url: https://line.me/R/ti/p/@722fdkca"
     ></a-image>
     
     <a-image
+      id="btn-youtube"
       src="#image-Youtube"
       width="0.3"
       height="0.3"
       position="0.2 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      link="href: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
+      custom-click="url: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
     ></a-image>
     
     <a-image
+      id="btn-ig"
       src="#image-IG"
       width="0.3"
       height="0.3"
       position="-0.2 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      link="href: https://www.instagram.com/isaoinvest"
+      custom-click="url: https://www.instagram.com/isaoinvest"
     ></a-image>
     
     <a-image
+      id="btn-fb"
       src="#image-FB"
       width="0.3"
       height="0.3"
       position="-0.6 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      link="href: https://www.facebook.com/profile.php?id=61552552833098"
+      custom-click="url: https://www.facebook.com/profile.php?id=61552552833098"
     ></a-image>
   </a-entity>
 
@@ -177,6 +184,55 @@ body {
 </a-scene>
 
 <script>
+// 自定義點擊處理器來避免跨域問題
+AFRAME.registerComponent('custom-click', {
+  schema: {
+    url: {type: 'string'}
+  },
+  init: function () {
+    var el = this.el;
+    var url = this.data.url;
+    
+    console.log('Custom click handler registered for:', url);
+    
+    // 直接在元素上添加點擊事件
+    el.addEventListener('click', function(event) {
+      console.log('Custom click triggered for:', url);
+      event.stopPropagation();
+      event.preventDefault();
+      
+      try {
+        if (url.startsWith('mailto:') || url.startsWith('tel:')) {
+          window.location.href = url;
+        } else {
+          window.open(url, '_blank');
+        }
+        console.log('Successfully opened:', url);
+      } catch (error) {
+        console.error('Error opening URL:', error);
+      }
+    });
+    
+    // 添加觸摸事件
+    el.addEventListener('touchend', function(event) {
+      console.log('Touch end triggered for:', url);
+      event.stopPropagation();
+      event.preventDefault();
+      
+      try {
+        if (url.startsWith('mailto:') || url.startsWith('tel:')) {
+          window.location.href = url;
+        } else {
+          window.open(url, '_blank');
+        }
+        console.log('Successfully opened via touch:', url);
+      } catch (error) {
+        console.error('Error opening URL via touch:', error);
+      }
+    });
+  }
+});
+
 // 完全按照舊代碼的視頻處理邏輯
 AFRAME.registerComponent("click-handler1", {
   init: function () {
@@ -258,59 +314,89 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeAnimations() {
-  // 浣熊模型動畫
-  const raccoonModel = document.querySelector("a-gltf-model");
-  if (raccoonModel) {
-    raccoonModel.addEventListener("loaded", () => {
-      gsap.to(raccoonModel.object3D.position, {
-        y: "+=0.1",
-        duration: 2,
-        yoyo: true,
-        repeat: -1,
-        ease: "power1.inOut",
+  // 等待資源完全載入
+  setTimeout(() => {
+    // 浣熊模型動畫
+    const raccoonModel = document.querySelector("a-gltf-model");
+    if (raccoonModel) {
+      raccoonModel.addEventListener("loaded", () => {
+        gsap.to(raccoonModel.object3D.position, {
+          y: "+=0.1",
+          duration: 2,
+          yoyo: true,
+          repeat: -1,
+          ease: "power1.inOut",
+        });
+        console.log("Raccoon animation started");
       });
-      console.log("Raccoon animation started");
-    });
-  }
+    }
 
-  // 懸停效果
-  const clickableElements = document.querySelectorAll(".clickable");
-  console.log("Found clickable elements:", clickableElements.length);
-  
-  clickableElements.forEach((element, index) => {
-    console.log(`Setting up hover for element ${index}:`, element);
+    // 懸停效果 - 確保元素已完全載入
+    const clickableElements = document.querySelectorAll(".clickable");
+    console.log("Found clickable elements:", clickableElements.length);
     
-    element.addEventListener("mouseenter", () => {
-      console.log(`Mouse enter on element ${index}`);
-      gsap.to(element.object3D.scale, {
-        x: 1.4,
-        y: 1.4,
-        z: 1.4,
-        duration: 0.3,
-      });
+    clickableElements.forEach((element, index) => {
+      console.log(`Setting up interactions for element ${index}:`, element.id);
+      
+      // 確保元素有object3D
+      if (element.object3D) {
+        element.addEventListener("mouseenter", () => {
+          console.log(`Mouse enter on element ${index} (${element.id})`);
+          gsap.to(element.object3D.scale, {
+            x: 1.4,
+            y: 1.4,
+            z: 1.4,
+            duration: 0.3,
+          });
+        });
+        
+        element.addEventListener("mouseleave", () => {
+          console.log(`Mouse leave on element ${index} (${element.id})`);
+          gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+        });
+        
+        // 觸摸效果
+        element.addEventListener("touchstart", (e) => {
+          console.log(`Touch start on element ${index} (${element.id})`);
+          e.preventDefault();
+          gsap.to(element.object3D.scale, {
+            x: 1.4,
+            y: 1.4,
+            z: 1.4,
+            duration: 0.3,
+          });
+        });
+        
+        element.addEventListener("touchend", (e) => {
+          console.log(`Touch end on element ${index} (${element.id})`);
+          setTimeout(() => {
+            gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+          }, 100);
+        });
+      }
     });
     
-    element.addEventListener("mouseleave", () => {
-      console.log(`Mouse leave on element ${index}`);
-      gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+    // 額外的測試點擊事件
+    const testButtons = [
+      'btn-website', 'btn-email', 'btn-phone', 
+      'btn-line', 'btn-youtube', 'btn-ig', 'btn-fb'
+    ];
+    
+    testButtons.forEach(buttonId => {
+      const button = document.getElementById(buttonId);
+      if (button) {
+        console.log(`Found button: ${buttonId}`);
+        
+        // 添加額外的點擊監聽器作為後備
+        button.addEventListener('click', function(e) {
+          console.log(`Direct click on ${buttonId}`);
+        });
+      } else {
+        console.log(`Button not found: ${buttonId}`);
+      }
     });
     
-    // 添加觸摸事件支持
-    element.addEventListener("touchstart", (e) => {
-      console.log(`Touch start on element ${index}`);
-      gsap.to(element.object3D.scale, {
-        x: 1.4,
-        y: 1.4,
-        z: 1.4,
-        duration: 0.3,
-      });
-    });
-    
-    element.addEventListener("touchend", (e) => {
-      console.log(`Touch end on element ${index}`);
-      gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
-    });
-  });
+  }, 1000); // 延遲1秒確保所有資源載入
 }
 
 // 調試用的全域點擊監聽器
