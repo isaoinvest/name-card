@@ -309,6 +309,7 @@
           position="0.6 0.4 -1.5"
           rotation="0 0 0"
           class="clickable"
+          link="href: https://isaoinvest.com"
           data-link="https://isaoinvest.com"
           click-handler
         ></a-image>
@@ -320,6 +321,7 @@
           position="0.6 0.1 -1.5"
           rotation="0 0 0"
           class="clickable"
+          link="href: mailto:isaoinvest@gmail.com"
           data-link="mailto:isaoinvest@gmail.com"
           click-handler
         ></a-image>
@@ -331,50 +333,55 @@
           position="0.6 -0.2 -1.5"
           rotation="0 0 0"
           class="clickable"
+          link="href: tel:+886920820259"
           data-link="tel:+886920820259"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image-LINE"
+          src="#image LINE"
           width="0.3"
           height="0.3"
           position="0.6 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
+          link="href: https://line.me/R/ti/p/@722fdkca"
           data-link="https://line.me/R/ti/p/@722fdkca"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image-Youtube"
+          src="#image Youtube"
           width="0.3"
           height="0.3"
           position="0.2 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
+          link="href: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
           data-link="https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image-IG"
+          src="#image IG"
           width="0.3"
           height="0.3"
           position="-0.2 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
+          link="href: https://www.instagram.com/isaoinvest"
           data-link="https://www.instagram.com/isaoinvest"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image-FB"
+          src="#image FB"
           width="0.3"
           height="0.3"
           position="-0.6 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
+          link="href: https://www.facebook.com/profile.php?id=61552552833098"
           data-link="https://www.facebook.com/profile.php?id=61552552833098"
           click-handler
         ></a-image>
@@ -396,211 +403,164 @@
     </a-scene>
 
     <script>
-      // 自定義點擊處理器組件
+      // 通用點擊處理器組件
       AFRAME.registerComponent('click-handler', {
         init: function () {
           const el = this.el;
           
-          // 使用 mousedown 和 touchstart 事件確保在所有設備上都能觸發
-          const handleClick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+          // 使用簡單的點擊事件監聽器
+          el.addEventListener('click', (event) => {
+            console.log('Element clicked:', el);
             
-            const link = el.getAttribute('data-link');
-            if (link) {
-              console.log('Opening link:', link);
-              
-              // 創建隱藏的 a 標籤來處理連結
-              const tempLink = document.createElement('a');
-              tempLink.href = link;
-              tempLink.target = '_blank';
-              tempLink.rel = 'noopener noreferrer';
-              
-              // 添加到 DOM 並點擊
-              document.body.appendChild(tempLink);
-              tempLink.click();
-              document.body.removeChild(tempLink);
+            // 首先嘗試從 data-link 屬性獲取連結
+            const dataLink = el.getAttribute('data-link');
+            if (dataLink) {
+              console.log('Opening data-link:', dataLink);
+              window.open(dataLink, '_blank');
+              return;
             }
-          };
-          
-          // 監聽多種事件確保相容性
-          el.addEventListener('click', handleClick);
-          el.addEventListener('mousedown', handleClick);
-          el.addEventListener('touchstart', handleClick, { passive: false });
+            
+            // 如果沒有 data-link，嘗試從 link 組件獲取
+            const linkComponent = el.getAttribute('link');
+            if (linkComponent && linkComponent.href) {
+              console.log('Opening link href:', linkComponent.href);
+              window.open(linkComponent.href, '_blank');
+              return;
+            }
+            
+            console.log('No valid link found for element');
+          });
           
           // 添加懸停效果
           el.addEventListener('mouseenter', () => {
-            el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 300');
-          });
-          
-          el.addEventListener('mouseleave', () => {
-            el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 300');
-          });
-          
-          // 觸控設備的視覺回饋
-          el.addEventListener('touchstart', () => {
-            el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 150');
-          }, { passive: true });
-          
-          el.addEventListener('touchend', () => {
-            el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 150');
-          }, { passive: true });
-        }
-      });
-
-      // 視頻自動播放控制
-      AFRAME.registerComponent("video-handler", {
-        init: function () {
-          var video = document.querySelector("#video1");
-          var scene = this.el.sceneEl;
-          var target = this.el.parentEl;
-          var isPlaying = false;
-          var audioEnabled = false; // 追蹤音頻是否已啟用
-          
-          console.log("Video handler initialized");
-          
-          // 一次性用戶交互監聽器，啟用音頻
-          const enableAudio = () => {
-            audioEnabled = true;
-            console.log("Audio permanently enabled after user interaction");
-          };
-          
-          // 監聽首次用戶交互
-          document.addEventListener('touchstart', enableAudio, { once: true });
-          document.addEventListener('click', enableAudio, { once: true });
-          document.addEventListener('mousedown', enableAudio, { once: true });
-          
-          // 監聽目標發現事件
-          target.addEventListener("targetFound", () => {
-            console.log("Video target found, attempting to play");
-            video.currentTime = 0;
-            
-            // 如果用戶已經交互過，直接嘗試有聲播放
-            if (audioEnabled) {
-              video.muted = false;
-              video.play().then(() => {
-                isPlaying = true;
-                console.log("Video playing with sound");
-              }).catch(error => {
-                console.error("Video play with sound failed:", error);
-                // 備用方案：靜音播放
-                video.muted = true;
-                video.play().then(() => {
-                  isPlaying = true;
-                  console.log("Video playing muted (fallback)");
-                }).catch(err => {
-                  console.error("Video play completely failed:", err);
-                });
-              });
-            } else {
-              // 用戶尚未交互，先靜音播放
-              video.muted = true;
-              video.play().then(() => {
-                isPlaying = true;
-                console.log("Video playing muted (waiting for user interaction)");
-                
-                // 如果在播放期間用戶交互，立即啟用聲音
-                const checkAudio = () => {
-                  if (audioEnabled && video.muted && isPlaying) {
-                    video.muted = false;
-                    console.log("Audio enabled during playback");
-                  }
-                };
-                
-                // 定期檢查是否可以啟用聲音
-                const audioCheckInterval = setInterval(() => {
-                  checkAudio();
-                  if (!isPlaying || !video.muted) {
-                    clearInterval(audioCheckInterval);
-                  }
-                }, 100);
-                
-              }).catch(error => {
-                console.error("Video play failed:", error);
+            if (window.gsap) {
+              gsap.to(el.object3D.scale, {
+                x: 1.2,
+                y: 1.2,
+                z: 1.2,
+                duration: 0.3,
               });
             }
           });
           
-          // 監聽目標丟失事件
-          target.addEventListener("targetLost", () => {
-            console.log("Video target lost, pausing video");
-            video.pause();
-            isPlaying = false;
+          el.addEventListener('mouseleave', () => {
+            if (window.gsap) {
+              gsap.to(el.object3D.scale, {
+                x: 1,
+                y: 1,
+                z: 1,
+                duration: 0.3,
+              });
+            }
           });
-          
-          // 監聽影片事件
-          video.addEventListener('loadeddata', () => console.log('Video data loaded'));
-          video.addEventListener('canplay', () => console.log('Video can play'));
-          video.addEventListener('playing', () => console.log('Video is playing'));
-          video.addEventListener('pause', () => console.log('Video paused'));
-          video.addEventListener('error', (e) => console.error('Video error:', e));
+        }
+      });
+
+      AFRAME.registerComponent("click-handler1", {
+        init: function () {
+          var video = document.querySelector("#video1");
+          var playing = false;
+          this.el.addEventListener("click", function () {
+            if (!playing) {
+              video.play();
+            } else {
+              video.pause();
+            }
+            playing = !playing;
+          });
         },
       });
 
-      // 載入指示器邏輯
+      // MP3 撥放按鈕
+      const mp3Button = document.getElementById("play-mp3");
+      const mp3Sound = document.getElementById("mp3-sound");
+
+      mp3Button.addEventListener("click", () => {
+        mp3Sound.play();
+      });
+
+      // Loading indicator logic
       const loadingIndicator = document.getElementById("loading-indicator");
-      const scannerFrame = document.getElementById("scanner-frame");
-      const statusText = document.querySelector(".status-text");
-      const overlay = document.getElementById("overlay");
-      const scene = document.querySelector("a-scene");
-      
-      let loadingStep = 0;
-      const loadingMessages = [
-        "正在載入目標識別模組...",
-        "初始化攝影機系統...",
-        "準備AR引擎...",
-        "系統就緒，請掃描目標"
-      ];
-      
       document.addEventListener("DOMContentLoaded", () => {
         loadingIndicator.style.display = "block";
-        
-        // 模擬載入步驟
-        const loadingInterval = setInterval(() => {
-          if (loadingStep < loadingMessages.length - 1) {
-            loadingStep++;
-            statusText.textContent = loadingMessages[loadingStep];
-          } else {
-            clearInterval(loadingInterval);
-          }
-        }, 800);
       });
 
-      // 場景載入完成處理
-      const handleSceneReady = () => {
-        console.log("Scene ready");
-        setTimeout(() => {
-          loadingIndicator.style.display = "none";
-          overlay.style.display = "none";
-          scene.classList.add("ready");
-          scannerFrame.style.display = "block";
-          
-          // 5秒後隱藏掃描框
-          setTimeout(() => {
-            scannerFrame.style.display = "none";
-          }, 5000);
-        }, 1500);
-      };
-
-      // 監聽場景載入事件
-      scene.addEventListener("loaded", handleSceneReady);
-      scene.addEventListener("arReady", handleSceneReady);
-
-      // 錯誤處理
-      scene.addEventListener("arError", (event) => {
-        console.error("AR Error:", event.detail);
+      document.querySelector("a-scene").addEventListener("loaded", () => {
         loadingIndicator.style.display = "none";
-        overlay.style.display = "none";
-        scannerFrame.style.display = "none";
       });
 
-      window.addEventListener('error', function(e) {
-        console.error('Error:', e.error);
-        loadingIndicator.style.display = "none";
-        overlay.style.display = "none";
+      // GSAP animation for 3D model
+      const raccoonModel = document.querySelector("a-gltf-model");
+      if (raccoonModel) {
+        raccoonModel.addEventListener("loaded", () => {
+          gsap.to(raccoonModel.object3D.position, {
+            y: "+=0.1",
+            duration: 2,
+            yoyo: true,
+            repeat: -1,
+            ease: "power1.inOut",
+          });
+        });
+      }
+
+      // 移除舊的懸停效果處理器，因為現在在 click-handler 組件中處理
+      
+      // Frame control logic
+      const videoFrame = document.querySelector("#video-frame");
+      const toggleFrameBtn = document.querySelector("#toggle-frame");
+      const blackFrameBtn = document.querySelector("#black-frame");
+      const woodFrameBtn = document.querySelector("#wood-frame");
+      const goldFrameBtn = document.querySelector("#gold-frame");
+      const redFrameBtn = document.querySelector("#red-frame");
+
+      function setFrameColor(color) {
+        const frameParts = videoFrame.querySelectorAll("a-box");
+        frameParts.forEach((part) => {
+          part.setAttribute("color", color);
+          part.removeAttribute("material");
+        });
+      }
+
+      function setFrameTexture(textureId) {
+        const frameParts = videoFrame.querySelectorAll("a-box");
+        frameParts.forEach((part) => {
+          part.setAttribute("material", `src: #${textureId}`);
+          part.removeAttribute("color");
+        });
+      }
+
+      let frameVisible = true;
+      toggleFrameBtn.addEventListener("click", () => {
+        frameVisible = !frameVisible;
+        videoFrame.setAttribute("visible", frameVisible);
+        toggleFrameBtn.textContent = frameVisible ? "隱藏框架" : "顯示框架";
+        console.log("Frame visibility toggled:", frameVisible);
       });
 
-      console.log("AR Business Card initialized");
+      blackFrameBtn.addEventListener("click", () => setFrameColor("#000000"));
+      woodFrameBtn.addEventListener("click", () =>
+        setFrameTexture("frame-texture-wood")
+      );
+      goldFrameBtn.addEventListener("click", () =>
+        setFrameTexture("frame-texture-gold")
+      );
+      redFrameBtn.addEventListener("click", () => setFrameColor("#FF0000"));
+
+      // Debug logging
+      console.log("Frame controls initialized");
+      console.log("Toggle button:", toggleFrameBtn);
+      console.log("Black button:", blackFrameBtn);
+      console.log("Wood button:", woodFrameBtn);
+      console.log("Gold button:", goldFrameBtn);
+      console.log("Red button:", redFrameBtn);
+
+      // 調試用的點擊事件監聽器
+      const imageclick = document.querySelector("#image FB");
+      if (imageclick) {
+        imageclick.addEventListener("click", (event) => {
+          console.log("FB image clicked directly");
+        });
+      }
     </script>
   </body>
 </html>
