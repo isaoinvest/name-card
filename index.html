@@ -6,7 +6,6 @@
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
     <style>
       #loading-indicator {
         position: fixed;
@@ -19,81 +18,15 @@
         padding: 20px;
         border-radius: 10px;
         display: none;
-      }
-      #frame-controls {
-        position: fixed;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: rgba(0, 0, 0, 0.7);
-        padding: 10px;
-        border-radius: 10px;
-        display: flex;
-        gap: 10px;
-        z-index: 1000;
-      }
-      .frame-button {
-        padding: 5px 10px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: all 0.3s ease;
-      }
-      .frame-button:hover {
-        opacity: 0.8;
-      }
-      #toggle-frame {
-        background-color: #4caf50;
-        color: white;
-      }
-      #black-frame {
-        background-color: #000000;
-        color: white;
-      }
-      #wood-frame {
-        background-color: #8b4513;
-        color: white;
-      }
-      #gold-frame {
-        background-color: #ffd700;
-        color: black;
-      }
-      #red-frame {
-        background-color: #ff0000;
-        color: white;
-      }
-      #play-mp3 {
-        background-color: #007bff;
-        color: white;
+        font-family: Arial, sans-serif;
       }
     </style>
   </head>
   <body>
     <div id="loading-indicator">正在加載AR體驗，請稍候...</div>
 
-    <div id="frame-controls">
-      <button id="toggle-frame" class="frame-button">隱藏框架</button>
-      <button id="black-frame" class="frame-button">Black</button>
-      <button id="wood-frame" class="frame-button">Wood</button>
-      <button id="gold-frame" class="frame-button">Gold</button>
-      <button id="red-frame" class="frame-button">Red</button>
-      <button id="play-mp3" class="frame-button">播放音效</button>
-    </div>
-
-    <a-scene{
-  "version": "1.0",
-  "images": 1,
-  "timestamp": "2025-07-04T04:44:54.541Z",
-  "features": [
-    {
-      "index": 0,
-      "name": "金屬海報背面.png",
-      "featureCount": 101
-    }
-  ]
-}
-      mindar-image="imageTargetSrc:https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind;warmupTolerance:5; missTolerance:600; filterMinCF:0.000001; filterBeta:500"
+    <a-scene
+      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
@@ -103,70 +36,66 @@
         <img
           id="profile"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png"
+          crossorigin="anonymous"
         />
         <img
           id="website"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website.png"
+          crossorigin="anonymous"
         />
         <img
           id="Email"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL.png"
+          crossorigin="anonymous"
         />
         <img
           id="phone"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone.png"
+          crossorigin="anonymous"
         />
         <img
-          id="image LINE"
+          id="image-LINE"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png"
+          crossorigin="anonymous"
         />
         <img
-          id="image Youtube"
+          id="image-Youtube"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png"
+          crossorigin="anonymous"
         />
         <img
-          id="image IG"
+          id="image-IG"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png"
+          crossorigin="anonymous"
         />
         <img
-          id="image FB"
+          id="image-FB"
           src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png"
+          crossorigin="anonymous"
         />
         <video
           id="video1"
           src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4"
           autoplay
           loop
+          muted
+          playsinline
+          crossorigin="anonymous"
         ></video>
         <a-asset-item
           id="raccoonModel"
           src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"
         ></a-asset-item>
-
-        <img
-          id="frame-texture-wood"
-          src="https://cdn.glitch.global/5ccc0053-b02d-4729-80a7-aa2242565329/istockphoto-1393065816-612x612.jpg?v=1728362602087"
-          crossorigin="anonymous"
-        />
-        <img
-          id="frame-texture-gold"
-          src="https://cdn.glitch.global/5ccc0053-b02d-4729-80a7-aa2242565329/pngtree-gold-textured-background-image_1366422.jpg?v=1728362572428"
-          crossorigin="anonymous"
-        />
-
-        <audio
-          id="mp3-sound"
-          src="https://cdn.glitch.global/5ccc0053-b02d-4729-80a7-aa2242565329/avengers_assemble.mp3?v=1728377587921"
-        ></audio>
       </a-assets>
 
       <a-camera
         position="0 0 0"
         look-controls="enabled: false"
         cursor="fuse: false; rayOrigin: mouse;"
-        raycaster="far: ${customFields.libVersion}; objects: .clickable"
+        raycaster="far: 1000; objects: .clickable"
       ></a-camera>
 
+      <!-- 第一個AR目標 - 名片內容 -->
       <a-entity mindar-image-target="targetIndex: 0">
         <a-entity
           id="interaction-prompt"
@@ -174,11 +103,13 @@
           text="value: 點擊元素以互動; align: center; color: #FFFFFF; width: 2"
           animation="property: opacity; from: 0; to: 1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
         ></a-entity>
+        
         <a-entity
           text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
           position="1.2 0.68 -1.5"
           scale="2 2 2"
         ></a-entity>
+        
         <a-gltf-model
           rotation="0 0 0"
           position="-0.25 -0.15 0"
@@ -186,6 +117,7 @@
           src="#raccoonModel"
           animation-mixer
         ></a-gltf-model>
+        
         <a-image
           src="#profile"
           width="0.55"
@@ -193,6 +125,7 @@
           position="0.6 0.9 -1.5"
           rotation="0 0 0"
         ></a-image>
+        
         <a-image
           src="#website"
           width="0.65"
@@ -202,6 +135,7 @@
           class="clickable"
           link="href: https://isaoinvest.com"
         ></a-image>
+        
         <a-image
           src="#Email"
           width="0.65"
@@ -211,6 +145,7 @@
           class="clickable"
           link="href: mailto:isaoinvest@gmail.com"
         ></a-image>
+        
         <a-image
           src="#phone"
           width="0.65"
@@ -220,8 +155,9 @@
           class="clickable"
           link="href: tel:+886920820259"
         ></a-image>
+        
         <a-image
-          src="#image LINE"
+          src="#image-LINE"
           width="0.3"
           height="0.3"
           position="0.6 -0.65 -1.5"
@@ -229,8 +165,9 @@
           class="clickable"
           link="href: https://line.me/R/ti/p/@722fdkca"
         ></a-image>
+        
         <a-image
-          src="#image Youtube"
+          src="#image-Youtube"
           width="0.3"
           height="0.3"
           position="0.2 -0.65 -1.5"
@@ -238,8 +175,9 @@
           class="clickable"
           link="href: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
         ></a-image>
+        
         <a-image
-          src="#image IG"
+          src="#image-IG"
           width="0.3"
           height="0.3"
           position="-0.2 -0.65 -1.5"
@@ -247,8 +185,9 @@
           class="clickable"
           link="href: https://www.instagram.com/isaoinvest"
         ></a-image>
+        
         <a-image
-          src="#image FB"
+          src="#image-FB"
           width="0.3"
           height="0.3"
           position="-0.6 -0.65 -1.5"
@@ -258,52 +197,27 @@
         ></a-image>
       </a-entity>
 
+      <!-- 第二個AR目標 - 影片 -->
       <a-entity mindar-image-target="targetIndex: 1">
-        <a-entity id="video-container">
-          <a-video
-            src="#video1"
-            height="1.05"
-            width="1.5"
-            position="0 0 0"
-            rotation="0 0 0"
-            class="clickable"
-            click-handler1
-          ></a-video>
-          <a-entity id="video-frame" visible="true">
-            <!-- Top -->
-            <a-box
-              position="0 0.5625 0"
-              scale="1.5 0.05 0.05"
-              color="#000000"
-            ></a-box>
-            <!-- Bottom -->
-            <a-box
-              position="0 -0.5625 0"
-              scale="1.5 0.05 0.05"
-              color="#000000"
-            ></a-box>
-            <!-- Left -->
-            <a-box
-              position="-0.75 0 0"
-              scale="0.05 1.15 0.05"
-              color="#000000"
-            ></a-box>
-            <!-- Right -->
-            <a-box
-              position="0.75 0 0"
-              scale="0.05 1.15 0.05"
-              color="#000000"
-            ></a-box>
-          </a-entity>
-        </a-entity>
+        <a-video
+          src="#video1"
+          height="1.05"
+          width="1.5"
+          position="0 0 0"
+          rotation="0 0 0"
+          class="clickable"
+          click-handler
+        ></a-video>
       </a-entity>
     </a-scene>
 
     <script>
-      AFRAME.registerComponent("click-handler1", {
+      // 視頻點擊控制
+      AFRAME.registerComponent("click-handler", {
         init: function () {
           var video = document.querySelector("#video1");
           var playing = false;
+          
           this.el.addEventListener("click", function () {
             if (!playing) {
               video.play();
@@ -315,109 +229,49 @@
         },
       });
 
-      // MP3 撥放按鈕
-      const mp3Button = document.getElementById("play-mp3");
-      const mp3Sound = document.getElementById("mp3-sound");
-
-      mp3Button.addEventListener("click", () => {
-        mp3Sound.play();
-      });
-
-      // Loading indicator logic
+      // 載入指示器邏輯
       const loadingIndicator = document.getElementById("loading-indicator");
+      
       document.addEventListener("DOMContentLoaded", () => {
         loadingIndicator.style.display = "block";
       });
 
+      // 等待場景完全載入
       document.querySelector("a-scene").addEventListener("loaded", () => {
+        setTimeout(() => {
+          loadingIndicator.style.display = "none";
+        }, 1000);
+      });
+
+      // 添加錯誤處理
+      window.addEventListener('error', function(e) {
+        console.error('Error:', e.error);
         loadingIndicator.style.display = "none";
       });
 
-      // GSAP animation for 3D model
-      const raccoonModel = document.querySelector("a-gltf-model");
-      if (raccoonModel) {
-        raccoonModel.addEventListener("loaded", () => {
-          gsap.to(raccoonModel.object3D.position, {
-            y: "+=0.1",
-            duration: 2,
-            yoyo: true,
-            repeat: -1,
-            ease: "power1.inOut",
-          });
-        });
-      }
+      // MindAR 載入狀態監聽
+      document.querySelector("a-scene").addEventListener("arReady", () => {
+        console.log("AR is ready");
+        loadingIndicator.style.display = "none";
+      });
 
-      // Hover effect for clickable elements
+      document.querySelector("a-scene").addEventListener("arError", (event) => {
+        console.error("AR Error:", event.detail);
+        loadingIndicator.style.display = "none";
+      });
+
+      // 點擊元素效果
       const clickableElements = document.querySelectorAll(".clickable");
       clickableElements.forEach((element) => {
         element.addEventListener("mouseenter", () => {
-          gsap.to(element.object3D.scale, {
-            x: 1.4,
-            y: 1.4,
-            z: 1.4,
-            duration: 0.3,
-          });
+          element.setAttribute("animation", "property: scale; to: 1.1 1.1 1.1; dur: 300");
         });
         element.addEventListener("mouseleave", () => {
-          gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+          element.setAttribute("animation", "property: scale; to: 1 1 1; dur: 300");
         });
       });
 
-      // Frame control logic
-      const videoFrame = document.querySelector("#video-frame");
-      const toggleFrameBtn = document.querySelector("#toggle-frame");
-      const blackFrameBtn = document.querySelector("#black-frame");
-      const woodFrameBtn = document.querySelector("#wood-frame");
-      const goldFrameBtn = document.querySelector("#gold-frame");
-      const redFrameBtn = document.querySelector("#red-frame");
-
-      function setFrameColor(color) {
-        const frameParts = videoFrame.querySelectorAll("a-box");
-        frameParts.forEach((part) => {
-          part.setAttribute("color", color);
-          part.removeAttribute("material");
-        });
-      }
-
-      function setFrameTexture(textureId) {
-        const frameParts = videoFrame.querySelectorAll("a-box");
-        frameParts.forEach((part) => {
-          part.setAttribute("material", `src: #${textureId}`);
-          part.removeAttribute("color");
-        });
-      }
-
-      let frameVisible = true;
-      toggleFrameBtn.addEventListener("click", () => {
-        frameVisible = !frameVisible;
-        videoFrame.setAttribute("visible", frameVisible);
-        toggleFrameBtn.textContent = frameVisible ? "隱藏框架" : "顯示框架";
-        console.log("Frame visibility toggled:", frameVisible);
-      });
-
-      blackFrameBtn.addEventListener("click", () => setFrameColor("#000000"));
-      woodFrameBtn.addEventListener("click", () =>
-        setFrameTexture("frame-texture-wood")
-      );
-      goldFrameBtn.addEventListener("click", () =>
-        setFrameTexture("frame-texture-gold")
-      );
-      redFrameBtn.addEventListener("click", () => setFrameColor("#FF0000"));
-
-      // Debug logging
-      console.log("Frame controls initialized");
-      console.log("Toggle button:", toggleFrameBtn);
-      console.log("Black button:", blackFrameBtn);
-      console.log("Wood button:", woodFrameBtn);
-      console.log("Gold button:", goldFrameBtn);
-      console.log("Red button:", redFrameBtn);
-
-      const imageclick = document.querySelector("#image FB");
-      if (imageclick) {
-        imageclick.addEventListener("click", (event) => {
-          console.log("image click");
-        });
-      }
+      console.log("AR Business Card initialized");
     </script>
   </body>
 </html>
