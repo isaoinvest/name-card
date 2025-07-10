@@ -7,6 +7,12 @@
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     <style>
+      /* --- 關鍵修正 --- */
+      .mindar-ui-overlay {
+        pointer-events: none;
+      }
+      /* --- 結束修正 --- */
+
       body {
         margin: 0;
         padding: 0;
@@ -33,7 +39,7 @@
         font-family: 'Courier New', monospace;
         text-align: center;
         border: 2px solid #00ffff;
-        box-shadow: 
+        box-shadow:  
           0 0 20px rgba(0, 255, 255, 0.3),
           inset 0 0 20px rgba(0, 255, 255, 0.1);
         backdrop-filter: blur(10px);
@@ -207,7 +213,7 @@
         />
         <img
           id="website"
-          src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/website2.png"
+          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png"
           crossorigin="anonymous"
         />
         <img
@@ -237,7 +243,7 @@
         />
         <img
           id="image-FB"
-          src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/Facebook-1.png"
+          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png"
           crossorigin="anonymous"
         />
         <video
@@ -261,7 +267,6 @@
         raycaster="far: 1000; objects: .clickable"
       ></a-camera>
 
-      <!-- 第一個AR目標 - 名片內容 -->
       <a-entity mindar-image-target="targetIndex: 0">
         <a-entity
           text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
@@ -363,7 +368,6 @@
         ></a-image>
       </a-entity>
 
-      <!-- 第二個AR目標 - 影片 -->
       <a-entity mindar-image-target="targetIndex: 1">
         <a-video
           id="ar-video"
