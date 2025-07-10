@@ -69,26 +69,12 @@
         opacity: 0;
       }
 
-      .scanner-frame.scanning {
-        display: block !important;
-      }
-
-      .scanner-frame.target-found .scan-line {
-        background: linear-gradient(90deg, transparent, #00ff88, transparent);
-        box-shadow: 0 0 15px #00ff88;
-        animation: scan-found 1s linear infinite;
-      }
-
-      .scanner-frame.target-found .corner {
-        border-color: #00ff88;
-        box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
-      }
-
       .corner {
         position: absolute;
         width: 30px;
         height: 30px;
         border: 3px solid #00ffff;
+        animation: pulse 2s ease-in-out infinite;
       }
 
       .corner.top-left {
@@ -172,11 +158,6 @@
         display: block;
       }
 
-      @keyframes scan-found {
-        0% { top: 0; }
-        100% { top: 100%; }
-      }
-
       @keyframes scan {
         0% { top: 0; }
         100% { top: 100%; }
@@ -202,10 +183,6 @@
           box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
           border-color: #00ff88;
         }
-      }
-
-      .corner {
-        animation: pulse 2s ease-in-out infinite;
       }
     </style>
   </head>
@@ -332,7 +309,8 @@
           position="0.6 0.4 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://isaoinvest.com"
+          data-link="https://isaoinvest.com"
+          click-handler
         ></a-image>
         
         <a-image
@@ -342,7 +320,8 @@
           position="0.6 0.1 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: mailto:isaoinvest@gmail.com"
+          data-link="mailto:isaoinvest@gmail.com"
+          click-handler
         ></a-image>
         
         <a-image
@@ -352,7 +331,8 @@
           position="0.6 -0.2 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: tel:+886920820259"
+          data-link="tel:+886920820259"
+          click-handler
         ></a-image>
         
         <a-image
@@ -362,7 +342,8 @@
           position="0.6 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://line.me/R/ti/p/@722fdkca"
+          data-link="https://line.me/R/ti/p/@722fdkca"
+          click-handler
         ></a-image>
         
         <a-image
@@ -372,7 +353,8 @@
           position="0.2 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
+          data-link="https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
+          click-handler
         ></a-image>
         
         <a-image
@@ -382,7 +364,8 @@
           position="-0.2 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://www.instagram.com/isaoinvest"
+          data-link="https://www.instagram.com/isaoinvest"
+          click-handler
         ></a-image>
         
         <a-image
@@ -392,7 +375,8 @@
           position="-0.6 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://www.facebook.com/profile.php?id=61552552833098"
+          data-link="https://www.facebook.com/profile.php?id=61552552833098"
+          click-handler
         ></a-image>
       </a-entity>
 
@@ -412,6 +396,28 @@
     </a-scene>
 
     <script>
+      // 自定義點擊處理器組件
+      AFRAME.registerComponent('click-handler', {
+        init: function () {
+          this.el.addEventListener('click', () => {
+            const link = this.el.getAttribute('data-link');
+            if (link) {
+              console.log('Opening link:', link);
+              window.open(link, '_blank');
+            }
+          });
+          
+          // 添加懸停效果
+          this.el.addEventListener('mouseenter', () => {
+            this.el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 300');
+          });
+          
+          this.el.addEventListener('mouseleave', () => {
+            this.el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 300');
+          });
+        }
+      });
+
       // 視頻自動播放控制
       AFRAME.registerComponent("video-handler", {
         init: function () {
@@ -425,17 +431,18 @@
           // 監聽目標發現事件
           target.addEventListener("targetFound", () => {
             console.log("Video target found, attempting to play");
-            video.currentTime = 0; // 重置到開始
+            video.currentTime = 0;
+            video.muted = false; // 取消靜音
             video.play().then(() => {
               isPlaying = true;
-              console.log("Video playing successfully");
+              console.log("Video playing with sound");
             }).catch(error => {
               console.error("Video play failed:", error);
-              // 如果自動播放失敗，嘗試靜音播放
+              // 如果有聲音播放失敗，嘗試靜音播放
               video.muted = true;
               video.play().then(() => {
                 isPlaying = true;
-                console.log("Video playing muted");
+                console.log("Video playing muted (fallback)");
               }).catch(err => {
                 console.error("Muted video play also failed:", err);
               });
@@ -449,25 +456,45 @@
             isPlaying = false;
           });
           
-          // 點擊控制播放/暫停
+          // 點擊控制播放/暫停和音量
           this.el.addEventListener("click", function () {
-            console.log("Video clicked, current playing state:", isPlaying);
+            console.log("Video clicked");
             if (!isPlaying) {
+              // 嘗試取消靜音播放
+              video.muted = false;
               video.play().then(() => {
                 isPlaying = true;
-                console.log("Video resumed by click");
+                console.log("Video resumed with sound");
               }).catch(error => {
                 console.error("Click play failed:", error);
+                // 如果失敗，嘗試靜音播放
+                video.muted = true;
+                video.play().then(() => {
+                  isPlaying = true;
+                  console.log("Video resumed muted");
+                }).catch(err => {
+                  console.error("Muted play also failed:", err);
+                });
               });
             } else {
-              video.pause();
-              isPlaying = false;
-              console.log("Video paused by click");
+              // 切換靜音狀態
+              video.muted = !video.muted;
+              console.log("Video muted:", video.muted);
             }
           });
           
+          // 用戶交互後嘗試啟用聲音
+          const enableAudio = () => {
+            if (isPlaying && video.muted) {
+              video.muted = false;
+              console.log("Audio enabled after user interaction");
+            }
+          };
+          
+          document.addEventListener('touchstart', enableAudio, { once: true });
+          document.addEventListener('click', enableAudio, { once: true });
+          
           // 監聽影片事件
-          video.addEventListener('loadstart', () => console.log('Video load started'));
           video.addEventListener('loadeddata', () => console.log('Video data loaded'));
           video.addEventListener('canplay', () => console.log('Video can play'));
           video.addEventListener('playing', () => console.log('Video is playing'));
@@ -505,9 +532,9 @@
         }, 800);
       });
 
-      // 等待場景完全載入
-      scene.addEventListener("loaded", () => {
-        console.log("Scene loaded");
+      // 場景載入完成處理
+      const handleSceneReady = () => {
+        console.log("Scene ready");
         setTimeout(() => {
           loadingIndicator.style.display = "none";
           overlay.style.display = "none";
@@ -519,28 +546,13 @@
             scannerFrame.style.display = "none";
           }, 5000);
         }, 1500);
-      });
+      };
 
-      // 添加錯誤處理
-      window.addEventListener('error', function(e) {
-        console.error('Error:', e.error);
-        loadingIndicator.style.display = "none";
-      });
+      // 監聽場景載入事件
+      scene.addEventListener("loaded", handleSceneReady);
+      scene.addEventListener("arReady", handleSceneReady);
 
-      // MindAR 載入狀態監聽
-      scene.addEventListener("arReady", () => {
-        console.log("AR is ready");
-        loadingIndicator.style.display = "none";
-        overlay.style.display = "none";
-        scene.classList.add("ready");
-        scannerFrame.style.display = "block";
-        
-        // 5秒後隱藏掃描框
-        setTimeout(() => {
-          scannerFrame.style.display = "none";
-        }, 5000);
-      });
-
+      // 錯誤處理
       scene.addEventListener("arError", (event) => {
         console.error("AR Error:", event.detail);
         loadingIndicator.style.display = "none";
@@ -548,15 +560,10 @@
         scannerFrame.style.display = "none";
       });
 
-      // 點擊元素效果
-      const clickableElements = document.querySelectorAll(".clickable");
-      clickableElements.forEach((element) => {
-        element.addEventListener("mouseenter", () => {
-          element.setAttribute("animation", "property: scale; to: 1.1 1.1 1.1; dur: 300");
-        });
-        element.addEventListener("mouseleave", () => {
-          element.setAttribute("animation", "property: scale; to: 1 1 1; dur: 300");
-        });
+      window.addEventListener('error', function(e) {
+        console.error('Error:', e.error);
+        loadingIndicator.style.display = "none";
+        overlay.style.display = "none";
       });
 
       console.log("AR Business Card initialized");
