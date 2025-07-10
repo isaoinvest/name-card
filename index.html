@@ -7,9 +7,22 @@
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      /* --- 關鍵修正 --- */
-      .mindar-ui-overlay {
-        pointer-events: none;
+      /* --- 關鍵修正：確保UI覆蓋層不會阻擋點擊 --- */
+      .mindar-ui-overlay,
+      .mindar-ui-overlay * {
+        pointer-events: none !important;
+      }
+      
+      /* 確保A-Frame場景可以接收點擊事件 */
+      a-scene {
+        pointer-events: auto !important;
+      }
+      
+      /* 確保所有AR元素都可以被點擊 */
+      a-entity,
+      a-image,
+      a-video {
+        pointer-events: auto !important;
       }
       /* --- 結束修正 --- */
 
@@ -43,6 +56,7 @@
           0 0 20px rgba(0, 255, 255, 0.3),
           inset 0 0 20px rgba(0, 255, 255, 0.1);
         backdrop-filter: blur(10px);
+        pointer-events: none;
       }
 
       .loading-text {
@@ -65,6 +79,7 @@
         box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
         opacity: 1;
         transition: opacity 0.3s ease;
+        pointer-events: none;
       }
 
       .scanner-frame.hidden {
@@ -175,6 +190,21 @@
           border-color: #00ff88;
         }
       }
+
+      /* 調試用：顯示點擊狀態 */
+      .click-debug {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 255, 255, 0.8);
+        color: black;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 10000;
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -197,6 +227,10 @@
       <div style="position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); color: #00ffff; font-family: 'Courier New', monospace; font-size: 14px; text-shadow: 0 0 10px #00ffff;">掃描目標中...</div>
     </div>
 
+    <div id="click-debug" class="click-debug">
+      點擊狀態：待機中...
+    </div>
+
     <a-scene
       mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500; showStats: false; showLoading: false; uiScanning: #scanner-frame"
       color-space="sRGB"
@@ -204,6 +238,8 @@
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
       loading-screen="enabled: false"
+      cursor="rayOrigin: mouse"
+      raycaster="objects: .clickable"
     >
       <a-assets>
         <img
@@ -263,7 +299,7 @@
       <a-camera
         position="0 0 0"
         look-controls="enabled: false"
-        cursor="fuse: false; rayOrigin: mouse;"
+        cursor="fuse: false; rayOrigin: mouse"
         raycaster="far: 1000; objects: .clickable"
       ></a-camera>
 
@@ -383,64 +419,117 @@
     </a-scene>
 
     <script>
+      // 調試工具
+      const debugDiv = document.getElementById('click-debug');
+      const showDebug = false; // 設為 true 來顯示調試信息
+
+      if (showDebug) {
+        debugDiv.style.display = 'block';
+      }
+
+      const updateDebug = (message) => {
+        if (showDebug) {
+          debugDiv.textContent = message;
+          console.log('Debug:', message);
+        }
+      };
+
       // 自定義點擊處理器組件
       AFRAME.registerComponent('click-handler', {
         init: function () {
           const el = this.el;
           
+          updateDebug('初始化點擊處理器');
+          
           // 統一的點擊處理函數
           const handleClick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            updateDebug('點擊事件觸發');
+            
+            // 阻止事件冒泡
+            if (e.stopPropagation) e.stopPropagation();
+            if (e.preventDefault) e.preventDefault();
             
             const link = el.getAttribute('data-link');
             if (link) {
+              updateDebug(`準備開啟連結: ${link}`);
               console.log('Opening link:', link);
               
               try {
-                // 直接使用 window.open 處理所有類型的連結
+                // 根據連結類型決定開啟方式
                 if (link.startsWith('mailto:') || link.startsWith('tel:')) {
-                  // 對於 mailto 和 tel 連結，使用 window.location
+                  // 對於 mailto 和 tel 連結
                   window.location.href = link;
+                  updateDebug(`已開啟 ${link.split(':')[0]} 連結`);
                 } else {
-                  // 對於 HTTP 連結，使用 window.open
-                  window.open(link, '_blank', 'noopener,noreferrer');
+                  // 對於 HTTP 連結
+                  const newWindow = window.open(link, '_blank', 'noopener,noreferrer');
+                  if (newWindow) {
+                    updateDebug('成功開啟新視窗');
+                  } else {
+                    updateDebug('彈出視窗被阻擋，嘗試備用方案');
+                    window.location.href = link;
+                  }
                 }
               } catch (error) {
+                updateDebug(`開啟連結時發生錯誤: ${error.message}`);
                 console.error('Error opening link:', error);
                 // 備用方案
                 window.location.href = link;
               }
+            } else {
+              updateDebug('沒有找到連結屬性');
             }
           };
           
-          // 監聽點擊事件
+          // 多種事件監聽，確保在各種情況下都能觸發
           el.addEventListener('click', handleClick);
+          el.addEventListener('mousedown', handleClick);
+          el.addEventListener('touchstart', handleClick);
+          el.addEventListener('touchend', handleClick);
           
-          // 為了確保在移動設備上也能正常工作，同時監聽 touchend
-          el.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            handleClick(e);
+          // A-Frame 特有的事件
+          el.addEventListener('raycaster-intersected', () => {
+            updateDebug('射線相交檢測到');
           });
           
-          // 添加懸停效果（桌面設備）
+          el.addEventListener('raycaster-intersected-cleared', () => {
+            updateDebug('射線相交清除');
+          });
+          
+          // 添加懸停效果
           el.addEventListener('mouseenter', () => {
+            updateDebug('滑鼠進入元素');
             el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 300; easing: easeOutQuad');
           });
           
           el.addEventListener('mouseleave', () => {
+            updateDebug('滑鼠離開元素');
             el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 300; easing: easeOutQuad');
           });
           
           // 觸控設備的視覺回饋
           el.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+            updateDebug('觸控開始');
             el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 150; easing: easeOutQuad');
           });
           
+          el.addEventListener('touchend', (e) => {
+            updateDebug('觸控結束');
+            setTimeout(() => {
+              el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 150; easing: easeOutQuad');
+            }, 150);
+          });
+          
           el.addEventListener('touchcancel', () => {
+            updateDebug('觸控取消');
             el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 150; easing: easeOutQuad');
           });
+          
+          // 確保元素可見且可交互
+          el.setAttribute('visible', true);
+          el.setAttribute('material', 'transparent: true; opacity: 1');
+          
+          console.log('Click handler initialized for element:', el);
         }
       });
 
@@ -573,16 +662,29 @@
       // 場景載入完成處理
       scene.addEventListener("loaded", () => {
         console.log("A-Frame scene loaded");
+        updateDebug('A-Frame場景載入完成');
       });
 
       // AR 系統就緒
       scene.addEventListener("arReady", () => {
         console.log("AR system ready");
+        updateDebug('AR系統就緒');
+      });
+
+      // 目標找到事件
+      scene.addEventListener("targetFound", () => {
+        updateDebug('目標已找到 - 可以開始互動');
+      });
+
+      // 目標丟失事件
+      scene.addEventListener("targetLost", () => {
+        updateDebug('目標丟失');
       });
 
       // 錯誤處理
       scene.addEventListener("arError", (event) => {
         console.error("AR Error:", event.detail);
+        updateDebug(`AR錯誤: ${event.detail}`);
         loadingIndicator.style.display = "none";
         scannerFrame.style.display = "none";
         
@@ -604,12 +706,29 @@
         document.body.appendChild(errorDiv);
       });
 
+      // 全域點擊事件監聽（調試用）
+      document.addEventListener('click', (e) => {
+        updateDebug(`全域點擊: ${e.target.tagName} - ${e.target.className}`);
+      });
+
       // 全域錯誤處理
       window.addEventListener('error', function(e) {
         console.error('Global error:', e.error);
+        updateDebug(`全域錯誤: ${e.error.message}`);
       });
 
+      // 強制清除可能的覆蓋層
+      setTimeout(() => {
+        const overlays = document.querySelectorAll('.mindar-ui-overlay, .mindar-ui-scanning');
+        overlays.forEach(overlay => {
+          overlay.style.pointerEvents = 'none';
+          overlay.style.display = 'none';
+        });
+        updateDebug('已清除可能的UI覆蓋層');
+      }, 2000);
+
       console.log("AR Business Card system initialized");
+      updateDebug('AR名片系統初始化完成');
     </script>
   </body>
 </html>
