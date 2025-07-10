@@ -7,22 +7,9 @@
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      /* --- 關鍵修正：確保UI覆蓋層不會阻擋點擊 --- */
-      .mindar-ui-overlay,
-      .mindar-ui-overlay * {
-        pointer-events: none !important;
-      }
-      
-      /* 確保A-Frame場景可以接收點擊事件 */
-      a-scene {
-        pointer-events: auto !important;
-      }
-      
-      /* 確保所有AR元素都可以被點擊 */
-      a-entity,
-      a-image,
-      a-video {
-        pointer-events: auto !important;
+      /* --- 核心修正：允許點擊事件穿透 MindAR 的 UI 覆蓋層 --- */
+      .mindar-ui-overlay {
+        pointer-events: none;
       }
       /* --- 結束修正 --- */
 
@@ -31,11 +18,6 @@
         padding: 0;
         background-color: #000;
         overflow: hidden;
-      }
-
-      a-scene {
-        opacity: 1;
-        transition: opacity 0.5s ease-in-out;
       }
 
       #loading-indicator {
@@ -48,7 +30,6 @@
         color: #00ffff;
         padding: 30px;
         border-radius: 15px;
-        display: none;
         font-family: 'Courier New', monospace;
         text-align: center;
         border: 2px solid #00ffff;
@@ -56,7 +37,6 @@
           0 0 20px rgba(0, 255, 255, 0.3),
           inset 0 0 20px rgba(0, 255, 255, 0.1);
         backdrop-filter: blur(10px);
-        pointer-events: none;
       }
 
       .loading-text {
@@ -67,23 +47,17 @@
 
       .scanner-frame {
         position: fixed;
-        top: 20%;
+        top: 50%;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translate(-50%, -50%);
         width: 250px;
         height: 250px;
         border: 2px solid #00ffff;
         border-radius: 10px;
         z-index: 1000;
-        display: block;
         box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
         opacity: 1;
         transition: opacity 0.3s ease;
-        pointer-events: none;
-      }
-
-      .scanner-frame.hidden {
-        opacity: 0;
       }
 
       .corner {
@@ -94,37 +68,10 @@
         animation: pulse 2s ease-in-out infinite;
       }
 
-      .corner.top-left {
-        top: -3px;
-        left: -3px;
-        border-right: none;
-        border-bottom: none;
-        border-top-left-radius: 10px;
-      }
-
-      .corner.top-right {
-        top: -3px;
-        right: -3px;
-        border-left: none;
-        border-bottom: none;
-        border-top-right-radius: 10px;
-      }
-
-      .corner.bottom-left {
-        bottom: -3px;
-        left: -3px;
-        border-right: none;
-        border-top: none;
-        border-bottom-left-radius: 10px;
-      }
-
-      .corner.bottom-right {
-        bottom: -3px;
-        right: -3px;
-        border-left: none;
-        border-top: none;
-        border-bottom-right-radius: 10px;
-      }
+      .corner.top-left { top: -3px; left: -3px; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
+      .corner.top-right { top: -3px; right: -3px; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
+      .corner.bottom-left { bottom: -3px; left: -3px; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
+      .corner.bottom-right { bottom: -3px; right: -3px; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
 
       .scan-line {
         position: absolute;
@@ -135,87 +82,33 @@
         box-shadow: 0 0 10px #00ffff;
       }
 
-      .loading-dots {
-        display: inline-block;
-        position: relative;
-        width: 60px;
-        height: 10px;
-      }
-
-      .loading-dots div {
-        position: absolute;
-        top: 0;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #00ffff;
-        animation: loading-dots 1.2s linear infinite;
-        box-shadow: 0 0 10px #00ffff;
-      }
-
+      .loading-dots { display: inline-block; position: relative; width: 60px; height: 10px; }
+      .loading-dots div { position: absolute; top: 0; width: 8px; height: 8px; border-radius: 50%; background: #00ffff; animation: loading-dots 1.2s linear infinite; box-shadow: 0 0 10px #00ffff; }
       .loading-dots div:nth-child(1) { left: 8px; animation-delay: 0s; }
       .loading-dots div:nth-child(2) { left: 26px; animation-delay: -0.4s; }
       .loading-dots div:nth-child(3) { left: 44px; animation-delay: -0.8s; }
 
-      .status-text {
-        font-size: 14px;
-        color: #00ff88;
-        margin-top: 10px;
-        text-shadow: 0 0 5px #00ff88;
-      }
+      .status-text { font-size: 14px; color: #00ff88; margin-top: 10px; text-shadow: 0 0 5px #00ff88; }
 
       @keyframes scan {
         0% { top: 0; }
         100% { top: 100%; }
       }
-
       @keyframes loading-dots {
-        0%, 80%, 100% { 
-          transform: scale(0.8);
-          opacity: 0.5;
-        }
-        40% { 
-          transform: scale(1.2);
-          opacity: 1;
-        }
+        0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+        40% { transform: scale(1.2); opacity: 1; }
       }
-
       @keyframes pulse {
-        0%, 100% { 
-          box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-          border-color: #00ffff;
-        }
-        50% { 
-          box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
-          border-color: #00ff88;
-        }
-      }
-
-      /* 調試用：顯示點擊狀態 */
-      .click-debug {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background: rgba(0, 255, 255, 0.8);
-        color: black;
-        padding: 10px;
-        border-radius: 5px;
-        font-family: monospace;
-        font-size: 12px;
-        z-index: 10000;
-        display: none;
+        0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); border-color: #00ffff; }
+        50% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.6); border-color: #00ff88; }
       }
     </style>
   </head>
   <body>
     <div id="loading-indicator">
       <div class="loading-text">AR系統初始化中</div>
-      <div class="loading-dots">
-        <div></div>
-        <div></div>
-        <div></div>
-      </div>
-      <div class="status-text">正在載入目標識別模組...</div>
+      <div class="loading-dots"><div></div><div></div><div></div></div>
+      <div class="status-text">正在載入模組...</div>
     </div>
 
     <div id="scanner-frame" class="scanner-frame">
@@ -224,511 +117,120 @@
       <div class="corner bottom-left"></div>
       <div class="corner bottom-right"></div>
       <div class="scan-line"></div>
-      <div style="position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); color: #00ffff; font-family: 'Courier New', monospace; font-size: 14px; text-shadow: 0 0 10px #00ffff;">掃描目標中...</div>
-    </div>
-
-    <div id="click-debug" class="click-debug">
-      點擊狀態：待機中...
+      <div style="position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); color: #00ffff; font-family: 'Courier New', monospace; font-size: 14px; text-shadow: 0 0 10px #00ffff;">請掃描目標圖片</div>
     </div>
 
     <a-scene
-      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500; showStats: false; showLoading: false; uiScanning: #scanner-frame"
+      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500; showStats: false; uiLoading: #loading-indicator; uiScanning: #scanner-frame;"
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
-      loading-screen="enabled: false"
-      cursor="rayOrigin: mouse"
-      raycaster="objects: .clickable"
     >
       <a-assets>
-        <img
-          id="profile"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png"
-          crossorigin="anonymous"
-        />
-        <img
-          id="website"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png"
-          crossorigin="anonymous"
-        />
-        <img
-          id="Email"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png"
-          crossorigin="anonymous"
-        />
-        <img
-          id="phone"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png"
-          crossorigin="anonymous"
-        />
-        <img
-          id="image-LINE"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png"
-          crossorigin="anonymous"
-        />
-        <img
-          id="image-Youtube"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png"
-          crossorigin="anonymous"
-        />
-        <img
-          id="image-IG"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png"
-          crossorigin="anonymous"
-        />
-        <img
-          id="image-FB"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png"
-          crossorigin="anonymous"
-        />
-        <video
-          id="video1"
-          src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4"
-          loop
-          playsinline
-          crossorigin="anonymous"
-          preload="auto"
-        ></video>
-        <a-asset-item
-          id="raccoonModel"
-          src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"
-        ></a-asset-item>
+        <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" />
+        <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" />
+        <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" />
+        <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" />
+        <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" />
+        <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" />
+        <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" />
+        <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" />
+        <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
+        <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
       </a-assets>
 
-      <a-camera
-        position="0 0 0"
-        look-controls="enabled: false"
-        cursor="fuse: false; rayOrigin: mouse"
-        raycaster="far: 1000; objects: .clickable"
-      ></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;" raycaster="far: 1000; objects: .clickable"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        <a-entity
-          text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
-          position="1.2 0.68 -1.5"
-          scale="2 2 2"
-        ></a-entity>
-        
-        <a-gltf-model
-          rotation="0 0 0"
-          position="-0.25 -0.15 0"
-          scale="0.09 0.09 0.09"
-          src="#raccoonModel"
-          animation-mixer
-        ></a-gltf-model>
-        
-        <a-image
-          src="#profile"
-          width="0.55"
-          height="0.55"
-          position="0.6 0.9 -1.5"
-          rotation="0 0 0"
-        ></a-image>
-        
-        <a-image
-          src="#website"
-          width="0.65"
-          height="0.25"
-          position="0.6 0.4 -1.5"
-          rotation="0 0 0"
-          class="clickable"
-          data-link="https://isaoinvest.com"
-          click-handler
-        ></a-image>
-        
-        <a-image
-          src="#Email"
-          width="0.65"
-          height="0.25"
-          position="0.6 0.1 -1.5"
-          rotation="0 0 0"
-          class="clickable"
-          data-link="mailto:isaoinvest@gmail.com"
-          click-handler
-        ></a-image>
-        
-        <a-image
-          src="#phone"
-          width="0.65"
-          height="0.23"
-          position="0.6 -0.2 -1.5"
-          rotation="0 0 0"
-          class="clickable"
-          data-link="tel:+886920820259"
-          click-handler
-        ></a-image>
-        
-        <a-image
-          src="#image-LINE"
-          width="0.3"
-          height="0.3"
-          position="0.6 -0.65 -1.5"
-          rotation="0 0 0"
-          class="clickable"
-          data-link="https://line.me/R/ti/p/@722fdkca"
-          click-handler
-        ></a-image>
-        
-        <a-image
-          src="#image-Youtube"
-          width="0.3"
-          height="0.3"
-          position="0.2 -0.65 -1.5"
-          rotation="0 0 0"
-          class="clickable"
-          data-link="https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
-          click-handler
-        ></a-image>
-        
-        <a-image
-          src="#image-IG"
-          width="0.3"
-          height="0.3"
-          position="-0.2 -0.65 -1.5"
-          rotation="0 0 0"
-          class="clickable"
-          data-link="https://www.instagram.com/isaoinvest"
-          click-handler
-        ></a-image>
-        
-        <a-image
-          src="#image-FB"
-          width="0.3"
-          height="0.3"
-          position="-0.6 -0.65 -1.5"
-          rotation="0 0 0"
-          class="clickable"
-          data-link="https://www.facebook.com/profile.php?id=61552552833098"
-          click-handler
-        ></a-image>
+        <a-entity text="value: Red Panda Keeper\nMingHsun Li; color: #FFF" position="1.2 0.68 -1.5" scale="2 2 2"></a-entity>
+        <a-gltf-model rotation="0 0 0" position="-0.25 -0.15 0" scale="0.09 0.09 0.09" src="#raccoonModel" animation-mixer></a-gltf-model>
+        <a-image src="#profile" width="0.55" height="0.55" position="0.6 0.9 -1.5" rotation="0 0 0"></a-image>
+        <a-image src="#website" width="0.65" height="0.25" position="0.6 0.4 -1.5" rotation="0 0 0" class="clickable" data-link="https://isaoinvest.com" click-handler></a-image>
+        <a-image src="#Email" width="0.65" height="0.25" position="0.6 0.1 -1.5" rotation="0 0 0" class="clickable" data-link="mailto:isaoinvest@gmail.com" click-handler></a-image>
+        <a-image src="#phone" width="0.65" height="0.23" position="0.6 -0.2 -1.5" rotation="0 0 0" class="clickable" data-link="tel:+886920820259" click-handler></a-image>
+        <a-image src="#image-LINE" width="0.3" height="0.3" position="0.6 -0.65 -1.5" rotation="0 0 0" class="clickable" data-link="https://line.me/R/ti/p/@722fdkca" click-handler></a-image>
+        <a-image src="#image-Youtube" width="0.3" height="0.3" position="0.2 -0.65 -1.5" rotation="0 0 0" class="clickable" data-link="https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ" click-handler></a-image>
+        <a-image src="#image-IG" width="0.3" height="0.3" position="-0.2 -0.65 -1.5" rotation="0 0 0" class="clickable" data-link="https://www.instagram.com/isaoinvest" click-handler></a-image>
+        <a-image src="#image-FB" width="0.3" height="0.3" position="-0.6 -0.65 -1.5" rotation="0 0 0" class="clickable" data-link="https://www.facebook.com/profile.php?id=61552552833098" click-handler></a-image>
       </a-entity>
 
       <a-entity mindar-image-target="targetIndex: 1">
-        <a-video
-          id="ar-video"
-          src="#video1"
-          height="1.05"
-          width="1.5"
-          position="0 0 0"
-          rotation="0 0 0"
-          class="clickable"
-          video-handler
-        ></a-video>
+        <a-video id="ar-video" src="#video1" height="1.05" width="1.5" position="0 0 0" rotation="0 0 0" class="clickable" video-handler></a-video>
       </a-entity>
     </a-scene>
 
     <script>
-      // 調試工具
-      const debugDiv = document.getElementById('click-debug');
-      const showDebug = false; // 設為 true 來顯示調試信息
-
-      if (showDebug) {
-        debugDiv.style.display = 'block';
-      }
-
-      const updateDebug = (message) => {
-        if (showDebug) {
-          debugDiv.textContent = message;
-          console.log('Debug:', message);
-        }
-      };
-
       // 自定義點擊處理器組件
       AFRAME.registerComponent('click-handler', {
         init: function () {
           const el = this.el;
           
-          updateDebug('初始化點擊處理器');
-          
-          // 統一的點擊處理函數
-          const handleClick = (e) => {
-            updateDebug('點擊事件觸發');
-            
-            // 阻止事件冒泡
-            if (e.stopPropagation) e.stopPropagation();
-            if (e.preventDefault) e.preventDefault();
-            
+          const handleClick = () => {
             const link = el.getAttribute('data-link');
             if (link) {
-              updateDebug(`準備開啟連結: ${link}`);
               console.log('Opening link:', link);
-              
-              try {
-                // 根據連結類型決定開啟方式
-                if (link.startsWith('mailto:') || link.startsWith('tel:')) {
-                  // 對於 mailto 和 tel 連結
-                  window.location.href = link;
-                  updateDebug(`已開啟 ${link.split(':')[0]} 連結`);
-                } else {
-                  // 對於 HTTP 連結
-                  const newWindow = window.open(link, '_blank', 'noopener,noreferrer');
-                  if (newWindow) {
-                    updateDebug('成功開啟新視窗');
-                  } else {
-                    updateDebug('彈出視窗被阻擋，嘗試備用方案');
-                    window.location.href = link;
-                  }
-                }
-              } catch (error) {
-                updateDebug(`開啟連結時發生錯誤: ${error.message}`);
-                console.error('Error opening link:', error);
-                // 備用方案
+              // 對於 http 連結在新分頁開啟，其他(mailto, tel)在當前頁面操作
+              if (link.startsWith('http')) {
+                window.open(link, '_blank', 'noopener,noreferrer');
+              } else {
                 window.location.href = link;
               }
-            } else {
-              updateDebug('沒有找到連結屬性');
             }
           };
           
-          // 多種事件監聽，確保在各種情況下都能觸發
           el.addEventListener('click', handleClick);
-          el.addEventListener('mousedown', handleClick);
-          el.addEventListener('touchstart', handleClick);
-          el.addEventListener('touchend', handleClick);
           
-          // A-Frame 特有的事件
-          el.addEventListener('raycaster-intersected', () => {
-            updateDebug('射線相交檢測到');
-          });
-          
-          el.addEventListener('raycaster-intersected-cleared', () => {
-            updateDebug('射線相交清除');
-          });
-          
-          // 添加懸停效果
+          // 添加懸停和觸控的視覺回饋效果
           el.addEventListener('mouseenter', () => {
-            updateDebug('滑鼠進入元素');
-            el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 300; easing: easeOutQuad');
+            el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 300; easing: easeOutQuad; startEvents: mouseenter');
           });
-          
           el.addEventListener('mouseleave', () => {
-            updateDebug('滑鼠離開元素');
-            el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 300; easing: easeOutQuad');
+            el.setAttribute('animation__leave', 'property: scale; to: 1 1 1; dur: 300; easing: easeOutQuad; startEvents: mouseleave');
           });
-          
-          // 觸控設備的視覺回饋
-          el.addEventListener('touchstart', (e) => {
-            updateDebug('觸控開始');
-            el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 150; easing: easeOutQuad');
+          el.addEventListener('touchstart', () => {
+            el.setAttribute('scale', '1.1 1.1 1.1');
           });
-          
-          el.addEventListener('touchend', (e) => {
-            updateDebug('觸控結束');
-            setTimeout(() => {
-              el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 150; easing: easeOutQuad');
-            }, 150);
+          el.addEventListener('touchend', () => {
+            el.setAttribute('scale', '1 1 1');
           });
-          
-          el.addEventListener('touchcancel', () => {
-            updateDebug('觸控取消');
-            el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 150; easing: easeOutQuad');
-          });
-          
-          // 確保元素可見且可交互
-          el.setAttribute('visible', true);
-          el.setAttribute('material', 'transparent: true; opacity: 1');
-          
-          console.log('Click handler initialized for element:', el);
         }
       });
 
-      // 視頻自動播放控制
+      // 影片自動播放控制
       AFRAME.registerComponent("video-handler", {
         init: function () {
-          var video = document.querySelector("#video1");
-          var scene = this.el.sceneEl;
-          var target = this.el.parentEl;
-          var isPlaying = false;
-          var audioEnabled = false;
-          
-          console.log("Video handler initialized");
-          
-          // 啟用音頻的函數
-          const enableAudio = () => {
-            if (!audioEnabled) {
-              audioEnabled = true;
-              console.log("Audio enabled after user interaction");
-            }
-          };
-          
-          // 監聽用戶交互以啟用音頻
-          document.addEventListener('touchstart', enableAudio, { once: true });
-          document.addEventListener('click', enableAudio, { once: true });
-          document.addEventListener('mousedown', enableAudio, { once: true });
-          
-          // 監聽目標發現事件
+          const video = document.querySelector("#video1");
+          const target = this.el.parentEl;
+          let userInteracted = false;
+
+          const handleInteraction = () => {
+              userInteracted = true;
+              document.body.removeEventListener('click', handleInteraction);
+              document.body.removeEventListener('touchstart', handleInteraction);
+          }
+
+          document.body.addEventListener('click', handleInteraction, { once: true });
+          document.body.addEventListener('touchstart', handleInteraction, { once: true });
+
           target.addEventListener("targetFound", () => {
-            console.log("Video target found, attempting to play");
-            video.currentTime = 0;
-            
-            const playVideo = async () => {
-              try {
-                if (audioEnabled) {
-                  video.muted = false;
-                  await video.play();
-                  isPlaying = true;
-                  console.log("Video playing with sound");
-                } else {
-                  video.muted = true;
-                  await video.play();
-                  isPlaying = true;
-                  console.log("Video playing muted");
-                }
-              } catch (error) {
-                console.error("Video play failed:", error);
-                // 備用方案：確保靜音播放
-                try {
-                  video.muted = true;
-                  await video.play();
-                  isPlaying = true;
-                  console.log("Video playing muted (fallback)");
-                } catch (fallbackError) {
-                  console.error("Video play completely failed:", fallbackError);
-                }
-              }
-            };
-            
-            playVideo();
+            console.log("Video target found");
+            if (userInteracted) {
+              video.muted = false;
+              video.play();
+            } else {
+              // 在沒有用戶互動前，只能靜音播放
+              video.muted = true;
+              video.play().catch(e => console.error("Video play failed:", e));
+            }
           });
           
-          // 監聽目標丟失事件
           target.addEventListener("targetLost", () => {
-            console.log("Video target lost, pausing video");
+            console.log("Video target lost");
             video.pause();
-            isPlaying = false;
           });
-          
-          // 監聽影片事件
-          video.addEventListener('loadeddata', () => console.log('Video data loaded'));
-          video.addEventListener('canplay', () => console.log('Video can play'));
-          video.addEventListener('playing', () => console.log('Video is playing'));
-          video.addEventListener('pause', () => console.log('Video paused'));
-          video.addEventListener('error', (e) => console.error('Video error:', e));
         },
       });
-
-      // 載入指示器邏輯
-      const loadingIndicator = document.getElementById("loading-indicator");
-      const scannerFrame = document.getElementById("scanner-frame");
-      const statusText = document.querySelector(".status-text");
-      const scene = document.querySelector("a-scene");
-      
-      let loadingStep = 0;
-      const loadingMessages = [
-        "正在載入目標識別模組...",
-        "初始化攝影機系統...",
-        "準備AR引擎...",
-        "系統就緒，請掃描目標"
-      ];
-      
-      // 場景初始化
-      let sceneInitialized = false;
-      
-      const initializeScene = () => {
-        if (sceneInitialized) return;
-        sceneInitialized = true;
-        
-        console.log("Initializing AR scene...");
-        loadingIndicator.style.display = "block";
-        
-        // 模擬載入步驟
-        const loadingInterval = setInterval(() => {
-          if (loadingStep < loadingMessages.length - 1) {
-            loadingStep++;
-            statusText.textContent = loadingMessages[loadingStep];
-          } else {
-            clearInterval(loadingInterval);
-            // 載入完成後隱藏載入指示器
-            setTimeout(() => {
-              loadingIndicator.style.display = "none";
-              scannerFrame.style.display = "block";
-              
-              // 5秒後隱藏掃描框
-              setTimeout(() => {
-                scannerFrame.classList.add("hidden");
-                setTimeout(() => {
-                  scannerFrame.style.display = "none";
-                }, 300);
-              }, 5000);
-            }, 1000);
-          }
-        }, 600);
-      };
-
-      // 延遲初始化，避免立即顯示載入畫面
-      setTimeout(initializeScene, 500);
-
-      // 場景載入完成處理
-      scene.addEventListener("loaded", () => {
-        console.log("A-Frame scene loaded");
-        updateDebug('A-Frame場景載入完成');
-      });
-
-      // AR 系統就緒
-      scene.addEventListener("arReady", () => {
-        console.log("AR system ready");
-        updateDebug('AR系統就緒');
-      });
-
-      // 目標找到事件
-      scene.addEventListener("targetFound", () => {
-        updateDebug('目標已找到 - 可以開始互動');
-      });
-
-      // 目標丟失事件
-      scene.addEventListener("targetLost", () => {
-        updateDebug('目標丟失');
-      });
-
-      // 錯誤處理
-      scene.addEventListener("arError", (event) => {
-        console.error("AR Error:", event.detail);
-        updateDebug(`AR錯誤: ${event.detail}`);
-        loadingIndicator.style.display = "none";
-        scannerFrame.style.display = "none";
-        
-        // 顯示錯誤訊息
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background: rgba(255, 0, 0, 0.8);
-          color: white;
-          padding: 20px;
-          border-radius: 10px;
-          font-family: Arial, sans-serif;
-          z-index: 10000;
-        `;
-        errorDiv.textContent = 'AR系統初始化失敗，請檢查攝影機權限或重新載入頁面';
-        document.body.appendChild(errorDiv);
-      });
-
-      // 全域點擊事件監聽（調試用）
-      document.addEventListener('click', (e) => {
-        updateDebug(`全域點擊: ${e.target.tagName} - ${e.target.className}`);
-      });
-
-      // 全域錯誤處理
-      window.addEventListener('error', function(e) {
-        console.error('Global error:', e.error);
-        updateDebug(`全域錯誤: ${e.error.message}`);
-      });
-
-      // 強制清除可能的覆蓋層
-      setTimeout(() => {
-        const overlays = document.querySelectorAll('.mindar-ui-overlay, .mindar-ui-scanning');
-        overlays.forEach(overlay => {
-          overlay.style.pointerEvents = 'none';
-          overlay.style.display = 'none';
-        });
-        updateDebug('已清除可能的UI覆蓋層');
-      }, 2000);
-
-      console.log("AR Business Card system initialized");
-      updateDebug('AR名片系統初始化完成');
     </script>
   </body>
 </html>
