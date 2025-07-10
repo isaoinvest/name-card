@@ -63,6 +63,21 @@
         box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
       }
 
+      .scanner-frame.scanning {
+        display: block !important;
+      }
+
+      .scanner-frame.target-found .scan-line {
+        background: linear-gradient(90deg, transparent, #00ff88, transparent);
+        box-shadow: 0 0 15px #00ff88;
+        animation: scan-found 1s linear infinite;
+      }
+
+      .scanner-frame.target-found .corner {
+        border-color: #00ff88;
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+      }
+
       .corner {
         position: absolute;
         width: 30px;
@@ -151,6 +166,11 @@
         display: block;
       }
 
+      @keyframes scan-found {
+        0% { top: 0; }
+        100% { top: 100%; }
+      }
+
       @keyframes scan {
         0% { top: 0; }
         100% { top: 100%; }
@@ -205,11 +225,12 @@
     </div>
 
     <a-scene
-      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
+      mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500; showStats: false; showLoading: false"
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
+      loading-screen="enabled: false"
     >
       <a-assets>
         <img
@@ -256,7 +277,6 @@
           id="video1"
           src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4"
           loop
-          muted
           playsinline
           crossorigin="anonymous"
           preload="auto"
