@@ -15,25 +15,25 @@ body {
   overflow: hidden;
 }
 
-a-scene {
-  opacity: 1;
-  transition: opacity 0.5s ease-in-out;
-}
-
-/* 简化的UI遮蔽层处理 - 不影响点击 */
-.mindar-ui-loading {
-  background: rgba(0, 0, 0, 0.5) !important;
-  color: #fff !important;
-}
-
-.mindar-ui-scanning {
-  border: 1px solid #fff !important;
+#loading-indicator {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  display: none;
 }
 </style>
 </head>
 <body>
+<div id="loading-indicator">正在加載AR體驗，請稍候...</div>
+
 <a-scene
-  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500; showStats: false"
+  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
   color-space="sRGB"
   renderer="colorManagement: true, physicallyCorrectLights"
   vr-mode-ui="enabled: false"
@@ -52,7 +52,7 @@ a-scene {
     <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
   </a-assets>
 
-  <!-- 恢复A-Frame原生的相机设置 - 这是点击功能的关键 -->
+  <!-- 完全按照舊代碼的相機設置 -->
   <a-camera
     position="0 0 0"
     look-controls="enabled: false"
@@ -61,6 +61,13 @@ a-scene {
   ></a-camera>
 
   <a-entity mindar-image-target="targetIndex: 0">
+    <a-entity
+      id="interaction-prompt"
+      position="0 -0.5 -1"
+      text="value: 點擊元素以互動; align: center; color: #FFFFFF; width: 2"
+      animation="property: opacity; from: 0; to: 1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
+    ></a-entity>
+    
     <a-entity
       text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
       position="1.2 0.68 -1.5"
@@ -83,7 +90,7 @@ a-scene {
       rotation="0 0 0"
     ></a-image>
     
-    <!-- 使用旧代码的成功点击逻辑 -->
+    <!-- 完全按照舊代碼的按鈕設置 -->
     <a-image
       src="#website"
       width="0.65"
@@ -170,46 +177,53 @@ a-scene {
 </a-scene>
 
 <script>
-// 使用旧代码的成功视频处理逻辑
+// 完全按照舊代碼的視頻處理邏輯
 AFRAME.registerComponent("click-handler1", {
   init: function () {
     var video = document.querySelector("#video1");
     var playing = false;
-    var target = this.el.parentEl;
+    var hasInteracted = false;
     
     console.log("Video handler initialized");
     
-    // 点击播放/暂停
     this.el.addEventListener("click", function () {
       console.log("Video clicked, playing:", playing);
+      
+      // 第一次點擊時解除靜音
+      if (!hasInteracted) {
+        video.muted = false;
+        hasInteracted = true;
+        console.log("Video unmuted after user interaction");
+      }
+      
       if (!playing) {
         video.play();
+        console.log("Video playing");
       } else {
         video.pause();
+        console.log("Video paused");
       }
       playing = !playing;
     });
     
-    // 目标发现时自动播放
+    // 目標發現時的處理
+    var target = this.el.parentEl;
     target.addEventListener("targetFound", () => {
-      console.log("Video target found, attempting to play");
+      console.log("Video target found");
       video.currentTime = 0;
       
-      const playVideo = async () => {
-        try {
-          video.muted = true;
-          await video.play();
+      // 初始時靜音自動播放
+      if (!hasInteracted) {
+        video.muted = true;
+        video.play().then(() => {
           playing = true;
-          console.log("Video playing");
-        } catch (error) {
-          console.error("Video play failed:", error);
-        }
-      };
-      
-      playVideo();
+          console.log("Video auto-playing (muted)");
+        }).catch(error => {
+          console.error("Auto-play failed:", error);
+        });
+      }
     });
     
-    // 目标丢失时暂停
     target.addEventListener("targetLost", () => {
       console.log("Video target lost, pausing video");
       video.pause();
@@ -218,55 +232,101 @@ AFRAME.registerComponent("click-handler1", {
   },
 });
 
-// 使用旧代码的GSAP动画逻辑
-const raccoonModel = document.querySelector("a-gltf-model");
-if (raccoonModel) {
-  raccoonModel.addEventListener("loaded", () => {
-    gsap.to(raccoonModel.object3D.position, {
-      y: "+=0.1",
-      duration: 2,
-      yoyo: true,
-      repeat: -1,
-      ease: "power1.inOut",
-    });
-  });
-}
-
-// 使用旧代码的悬停效果逻辑
-const clickableElements = document.querySelectorAll(".clickable");
-clickableElements.forEach((element) => {
-  element.addEventListener("mouseenter", () => {
-    gsap.to(element.object3D.scale, {
-      x: 1.4,
-      y: 1.4,
-      z: 1.4,
-      duration: 0.3,
-    });
-  });
-  element.addEventListener("mouseleave", () => {
-    gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
-  });
-});
-
-// 场景载入处理
+// 延遲初始化以確保MindAR完全載入
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM loaded');
+  
+  const loadingIndicator = document.getElementById("loading-indicator");
+  loadingIndicator.style.display = "block";
   
   const scene = document.querySelector('a-scene');
   if (scene) {
     scene.addEventListener('loaded', function() {
-      console.log('A-Frame scene loaded with clickable elements');
+      console.log('A-Frame scene loaded');
+      
+      // 延遲初始化以確保MindAR完全準備就緒
+      setTimeout(() => {
+        loadingIndicator.style.display = "none";
+        
+        // 初始化GSAP動畫
+        initializeAnimations();
+        
+        console.log('AR system fully initialized');
+      }, 2000);
     });
   }
 });
 
-// 调试点击事件
+function initializeAnimations() {
+  // 浣熊模型動畫
+  const raccoonModel = document.querySelector("a-gltf-model");
+  if (raccoonModel) {
+    raccoonModel.addEventListener("loaded", () => {
+      gsap.to(raccoonModel.object3D.position, {
+        y: "+=0.1",
+        duration: 2,
+        yoyo: true,
+        repeat: -1,
+        ease: "power1.inOut",
+      });
+      console.log("Raccoon animation started");
+    });
+  }
+
+  // 懸停效果
+  const clickableElements = document.querySelectorAll(".clickable");
+  console.log("Found clickable elements:", clickableElements.length);
+  
+  clickableElements.forEach((element, index) => {
+    console.log(`Setting up hover for element ${index}:`, element);
+    
+    element.addEventListener("mouseenter", () => {
+      console.log(`Mouse enter on element ${index}`);
+      gsap.to(element.object3D.scale, {
+        x: 1.4,
+        y: 1.4,
+        z: 1.4,
+        duration: 0.3,
+      });
+    });
+    
+    element.addEventListener("mouseleave", () => {
+      console.log(`Mouse leave on element ${index}`);
+      gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+    });
+    
+    // 添加觸摸事件支持
+    element.addEventListener("touchstart", (e) => {
+      console.log(`Touch start on element ${index}`);
+      gsap.to(element.object3D.scale, {
+        x: 1.4,
+        y: 1.4,
+        z: 1.4,
+        duration: 0.3,
+      });
+    });
+    
+    element.addEventListener("touchend", (e) => {
+      console.log(`Touch end on element ${index}`);
+      gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+    });
+  });
+}
+
+// 調試用的全域點擊監聽器
 document.addEventListener('click', function(event) {
   console.log('Global click detected at:', event.clientX, event.clientY);
   console.log('Target element:', event.target);
+  console.log('Target tagName:', event.target.tagName);
 });
 
-console.log("AR Business Card system initialized with working click functionality");
+// 調試用的觸摸監聽器
+document.addEventListener('touchstart', function(event) {
+  console.log('Global touch detected at:', event.touches[0].clientX, event.touches[0].clientY);
+  console.log('Touch target:', event.target);
+});
+
+console.log("AR Business Card system initialized");
 </script>
 </body>
 </html>
