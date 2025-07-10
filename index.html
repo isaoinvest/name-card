@@ -15,12 +15,8 @@
       }
 
       a-scene {
-        opacity: 0;
-        transition: opacity 1s ease-in-out;
-      }
-
-      a-scene.ready {
         opacity: 1;
+        transition: opacity 0.5s ease-in-out;
       }
 
       #loading-indicator {
@@ -147,17 +143,6 @@
         text-shadow: 0 0 5px #00ff88;
       }
 
-      #overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: #000;
-        z-index: 10000;
-        display: block;
-      }
-
       @keyframes scan {
         0% { top: 0; }
         100% { top: 100%; }
@@ -187,8 +172,6 @@
     </style>
   </head>
   <body>
-    <div id="overlay"></div>
-    
     <div id="loading-indicator">
       <div class="loading-text">AR系統初始化中</div>
       <div class="loading-dots">
@@ -309,7 +292,6 @@
           position="0.6 0.4 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://isaoinvest.com"
           data-link="https://isaoinvest.com"
           click-handler
         ></a-image>
@@ -321,7 +303,6 @@
           position="0.6 0.1 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: mailto:isaoinvest@gmail.com"
           data-link="mailto:isaoinvest@gmail.com"
           click-handler
         ></a-image>
@@ -333,55 +314,50 @@
           position="0.6 -0.2 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: tel:+886920820259"
           data-link="tel:+886920820259"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image LINE"
+          src="#image-LINE"
           width="0.3"
           height="0.3"
           position="0.6 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://line.me/R/ti/p/@722fdkca"
           data-link="https://line.me/R/ti/p/@722fdkca"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image Youtube"
+          src="#image-Youtube"
           width="0.3"
           height="0.3"
           position="0.2 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
           data-link="https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image IG"
+          src="#image-IG"
           width="0.3"
           height="0.3"
           position="-0.2 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://www.instagram.com/isaoinvest"
           data-link="https://www.instagram.com/isaoinvest"
           click-handler
         ></a-image>
         
         <a-image
-          src="#image FB"
+          src="#image-FB"
           width="0.3"
           height="0.3"
           position="-0.6 -0.65 -1.5"
           rotation="0 0 0"
           class="clickable"
-          link="href: https://www.facebook.com/profile.php?id=61552552833098"
           data-link="https://www.facebook.com/profile.php?id=61552552833098"
           click-handler
         ></a-image>
@@ -403,164 +379,233 @@
     </a-scene>
 
     <script>
-      // 通用點擊處理器組件
+      // 自定義點擊處理器組件
       AFRAME.registerComponent('click-handler', {
         init: function () {
           const el = this.el;
           
-          // 使用簡單的點擊事件監聽器
-          el.addEventListener('click', (event) => {
-            console.log('Element clicked:', el);
+          // 統一的點擊處理函數
+          const handleClick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             
-            // 首先嘗試從 data-link 屬性獲取連結
-            const dataLink = el.getAttribute('data-link');
-            if (dataLink) {
-              console.log('Opening data-link:', dataLink);
-              window.open(dataLink, '_blank');
-              return;
+            const link = el.getAttribute('data-link');
+            if (link) {
+              console.log('Opening link:', link);
+              
+              try {
+                // 直接使用 window.open 處理所有類型的連結
+                if (link.startsWith('mailto:') || link.startsWith('tel:')) {
+                  // 對於 mailto 和 tel 連結，使用 window.location
+                  window.location.href = link;
+                } else {
+                  // 對於 HTTP 連結，使用 window.open
+                  window.open(link, '_blank', 'noopener,noreferrer');
+                }
+              } catch (error) {
+                console.error('Error opening link:', error);
+                // 備用方案
+                window.location.href = link;
+              }
             }
-            
-            // 如果沒有 data-link，嘗試從 link 組件獲取
-            const linkComponent = el.getAttribute('link');
-            if (linkComponent && linkComponent.href) {
-              console.log('Opening link href:', linkComponent.href);
-              window.open(linkComponent.href, '_blank');
-              return;
-            }
-            
-            console.log('No valid link found for element');
+          };
+          
+          // 監聽點擊事件
+          el.addEventListener('click', handleClick);
+          
+          // 為了確保在移動設備上也能正常工作，同時監聽 touchend
+          el.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleClick(e);
           });
           
-          // 添加懸停效果
+          // 添加懸停效果（桌面設備）
           el.addEventListener('mouseenter', () => {
-            if (window.gsap) {
-              gsap.to(el.object3D.scale, {
-                x: 1.2,
-                y: 1.2,
-                z: 1.2,
-                duration: 0.3,
-              });
-            }
+            el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 300; easing: easeOutQuad');
           });
           
           el.addEventListener('mouseleave', () => {
-            if (window.gsap) {
-              gsap.to(el.object3D.scale, {
-                x: 1,
-                y: 1,
-                z: 1,
-                duration: 0.3,
-              });
-            }
+            el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 300; easing: easeOutQuad');
+          });
+          
+          // 觸控設備的視覺回饋
+          el.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            el.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 150; easing: easeOutQuad');
+          });
+          
+          el.addEventListener('touchcancel', () => {
+            el.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 150; easing: easeOutQuad');
           });
         }
       });
 
-      AFRAME.registerComponent("click-handler1", {
+      // 視頻自動播放控制
+      AFRAME.registerComponent("video-handler", {
         init: function () {
           var video = document.querySelector("#video1");
-          var playing = false;
-          this.el.addEventListener("click", function () {
-            if (!playing) {
-              video.play();
-            } else {
-              video.pause();
+          var scene = this.el.sceneEl;
+          var target = this.el.parentEl;
+          var isPlaying = false;
+          var audioEnabled = false;
+          
+          console.log("Video handler initialized");
+          
+          // 啟用音頻的函數
+          const enableAudio = () => {
+            if (!audioEnabled) {
+              audioEnabled = true;
+              console.log("Audio enabled after user interaction");
             }
-            playing = !playing;
+          };
+          
+          // 監聽用戶交互以啟用音頻
+          document.addEventListener('touchstart', enableAudio, { once: true });
+          document.addEventListener('click', enableAudio, { once: true });
+          document.addEventListener('mousedown', enableAudio, { once: true });
+          
+          // 監聽目標發現事件
+          target.addEventListener("targetFound", () => {
+            console.log("Video target found, attempting to play");
+            video.currentTime = 0;
+            
+            const playVideo = async () => {
+              try {
+                if (audioEnabled) {
+                  video.muted = false;
+                  await video.play();
+                  isPlaying = true;
+                  console.log("Video playing with sound");
+                } else {
+                  video.muted = true;
+                  await video.play();
+                  isPlaying = true;
+                  console.log("Video playing muted");
+                }
+              } catch (error) {
+                console.error("Video play failed:", error);
+                // 備用方案：確保靜音播放
+                try {
+                  video.muted = true;
+                  await video.play();
+                  isPlaying = true;
+                  console.log("Video playing muted (fallback)");
+                } catch (fallbackError) {
+                  console.error("Video play completely failed:", fallbackError);
+                }
+              }
+            };
+            
+            playVideo();
           });
+          
+          // 監聽目標丟失事件
+          target.addEventListener("targetLost", () => {
+            console.log("Video target lost, pausing video");
+            video.pause();
+            isPlaying = false;
+          });
+          
+          // 監聽影片事件
+          video.addEventListener('loadeddata', () => console.log('Video data loaded'));
+          video.addEventListener('canplay', () => console.log('Video can play'));
+          video.addEventListener('playing', () => console.log('Video is playing'));
+          video.addEventListener('pause', () => console.log('Video paused'));
+          video.addEventListener('error', (e) => console.error('Video error:', e));
         },
       });
 
-      // MP3 撥放按鈕
-      const mp3Button = document.getElementById("play-mp3");
-      const mp3Sound = document.getElementById("mp3-sound");
-
-      mp3Button.addEventListener("click", () => {
-        mp3Sound.play();
-      });
-
-      // Loading indicator logic
+      // 載入指示器邏輯
       const loadingIndicator = document.getElementById("loading-indicator");
-      document.addEventListener("DOMContentLoaded", () => {
-        loadingIndicator.style.display = "block";
-      });
-
-      document.querySelector("a-scene").addEventListener("loaded", () => {
-        loadingIndicator.style.display = "none";
-      });
-
-      // GSAP animation for 3D model
-      const raccoonModel = document.querySelector("a-gltf-model");
-      if (raccoonModel) {
-        raccoonModel.addEventListener("loaded", () => {
-          gsap.to(raccoonModel.object3D.position, {
-            y: "+=0.1",
-            duration: 2,
-            yoyo: true,
-            repeat: -1,
-            ease: "power1.inOut",
-          });
-        });
-      }
-
-      // 移除舊的懸停效果處理器，因為現在在 click-handler 組件中處理
+      const scannerFrame = document.getElementById("scanner-frame");
+      const statusText = document.querySelector(".status-text");
+      const scene = document.querySelector("a-scene");
       
-      // Frame control logic
-      const videoFrame = document.querySelector("#video-frame");
-      const toggleFrameBtn = document.querySelector("#toggle-frame");
-      const blackFrameBtn = document.querySelector("#black-frame");
-      const woodFrameBtn = document.querySelector("#wood-frame");
-      const goldFrameBtn = document.querySelector("#gold-frame");
-      const redFrameBtn = document.querySelector("#red-frame");
+      let loadingStep = 0;
+      const loadingMessages = [
+        "正在載入目標識別模組...",
+        "初始化攝影機系統...",
+        "準備AR引擎...",
+        "系統就緒，請掃描目標"
+      ];
+      
+      // 場景初始化
+      let sceneInitialized = false;
+      
+      const initializeScene = () => {
+        if (sceneInitialized) return;
+        sceneInitialized = true;
+        
+        console.log("Initializing AR scene...");
+        loadingIndicator.style.display = "block";
+        
+        // 模擬載入步驟
+        const loadingInterval = setInterval(() => {
+          if (loadingStep < loadingMessages.length - 1) {
+            loadingStep++;
+            statusText.textContent = loadingMessages[loadingStep];
+          } else {
+            clearInterval(loadingInterval);
+            // 載入完成後隱藏載入指示器
+            setTimeout(() => {
+              loadingIndicator.style.display = "none";
+              scannerFrame.style.display = "block";
+              
+              // 5秒後隱藏掃描框
+              setTimeout(() => {
+                scannerFrame.classList.add("hidden");
+                setTimeout(() => {
+                  scannerFrame.style.display = "none";
+                }, 300);
+              }, 5000);
+            }, 1000);
+          }
+        }, 600);
+      };
 
-      function setFrameColor(color) {
-        const frameParts = videoFrame.querySelectorAll("a-box");
-        frameParts.forEach((part) => {
-          part.setAttribute("color", color);
-          part.removeAttribute("material");
-        });
-      }
+      // 延遲初始化，避免立即顯示載入畫面
+      setTimeout(initializeScene, 500);
 
-      function setFrameTexture(textureId) {
-        const frameParts = videoFrame.querySelectorAll("a-box");
-        frameParts.forEach((part) => {
-          part.setAttribute("material", `src: #${textureId}`);
-          part.removeAttribute("color");
-        });
-      }
-
-      let frameVisible = true;
-      toggleFrameBtn.addEventListener("click", () => {
-        frameVisible = !frameVisible;
-        videoFrame.setAttribute("visible", frameVisible);
-        toggleFrameBtn.textContent = frameVisible ? "隱藏框架" : "顯示框架";
-        console.log("Frame visibility toggled:", frameVisible);
+      // 場景載入完成處理
+      scene.addEventListener("loaded", () => {
+        console.log("A-Frame scene loaded");
       });
 
-      blackFrameBtn.addEventListener("click", () => setFrameColor("#000000"));
-      woodFrameBtn.addEventListener("click", () =>
-        setFrameTexture("frame-texture-wood")
-      );
-      goldFrameBtn.addEventListener("click", () =>
-        setFrameTexture("frame-texture-gold")
-      );
-      redFrameBtn.addEventListener("click", () => setFrameColor("#FF0000"));
+      // AR 系統就緒
+      scene.addEventListener("arReady", () => {
+        console.log("AR system ready");
+      });
 
-      // Debug logging
-      console.log("Frame controls initialized");
-      console.log("Toggle button:", toggleFrameBtn);
-      console.log("Black button:", blackFrameBtn);
-      console.log("Wood button:", woodFrameBtn);
-      console.log("Gold button:", goldFrameBtn);
-      console.log("Red button:", redFrameBtn);
+      // 錯誤處理
+      scene.addEventListener("arError", (event) => {
+        console.error("AR Error:", event.detail);
+        loadingIndicator.style.display = "none";
+        scannerFrame.style.display = "none";
+        
+        // 顯示錯誤訊息
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(255, 0, 0, 0.8);
+          color: white;
+          padding: 20px;
+          border-radius: 10px;
+          font-family: Arial, sans-serif;
+          z-index: 10000;
+        `;
+        errorDiv.textContent = 'AR系統初始化失敗，請檢查攝影機權限或重新載入頁面';
+        document.body.appendChild(errorDiv);
+      });
 
-      // 調試用的點擊事件監聽器
-      const imageclick = document.querySelector("#image FB");
-      if (imageclick) {
-        imageclick.addEventListener("click", (event) => {
-          console.log("FB image clicked directly");
-        });
-      }
+      // 全域錯誤處理
+      window.addEventListener('error', function(e) {
+        console.error('Global error:', e.error);
+      });
+
+      console.log("AR Business Card system initialized");
     </script>
   </body>
 </html>
