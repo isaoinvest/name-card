@@ -7,6 +7,22 @@
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      a-scene {
+        opacity: 0;
+        transition: opacity 1s ease-in-out;
+      }
+
+      a-scene.ready {
+        opacity: 1;
+      }
+
       #loading-indicator {
         position: fixed;
         top: 50%;
@@ -124,6 +140,17 @@
         text-shadow: 0 0 5px #00ff88;
       }
 
+      #overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        z-index: 10000;
+        display: block;
+      }
+
       @keyframes scan {
         0% { top: 0; }
         100% { top: 100%; }
@@ -157,6 +184,8 @@
     </style>
   </head>
   <body>
+    <div id="overlay"></div>
+    
     <div id="loading-indicator">
       <div class="loading-text">AR系統初始化中</div>
       <div class="loading-dots">
@@ -424,6 +453,8 @@
       const loadingIndicator = document.getElementById("loading-indicator");
       const scannerFrame = document.getElementById("scanner-frame");
       const statusText = document.querySelector(".status-text");
+      const overlay = document.getElementById("overlay");
+      const scene = document.querySelector("a-scene");
       
       let loadingStep = 0;
       const loadingMessages = [
@@ -448,16 +479,19 @@
       });
 
       // 等待場景完全載入
-      document.querySelector("a-scene").addEventListener("loaded", () => {
+      scene.addEventListener("loaded", () => {
+        console.log("Scene loaded");
         setTimeout(() => {
           loadingIndicator.style.display = "none";
+          overlay.style.display = "none";
+          scene.classList.add("ready");
           scannerFrame.style.display = "block";
           
           // 5秒後隱藏掃描框
           setTimeout(() => {
             scannerFrame.style.display = "none";
           }, 5000);
-        }, 1000);
+        }, 1500);
       });
 
       // 添加錯誤處理
@@ -467,9 +501,11 @@
       });
 
       // MindAR 載入狀態監聽
-      document.querySelector("a-scene").addEventListener("arReady", () => {
+      scene.addEventListener("arReady", () => {
         console.log("AR is ready");
         loadingIndicator.style.display = "none";
+        overlay.style.display = "none";
+        scene.classList.add("ready");
         scannerFrame.style.display = "block";
         
         // 5秒後隱藏掃描框
@@ -478,9 +514,10 @@
         }, 5000);
       });
 
-      document.querySelector("a-scene").addEventListener("arError", (event) => {
+      scene.addEventListener("arError", (event) => {
         console.error("AR Error:", event.detail);
         loadingIndicator.style.display = "none";
+        overlay.style.display = "none";
         scannerFrame.style.display = "none";
       });
 
