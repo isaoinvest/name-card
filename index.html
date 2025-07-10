@@ -4,10 +4,148 @@
 <title>AR Business Card</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const sceneEl = document.querySelector('a-scene');
+  let arSystem;
+  
+  sceneEl.addEventListener('loaded', function () {
+    arSystem = sceneEl.systems["mindar-image-system"];
+    console.log("MindAR system loaded");
+  });
+
+  // 等待場景載入後設置事件監聽器
+  sceneEl.addEventListener("arReady", (event) => {
+    console.log("MindAR is ready");
+    setupEventListeners();
+  });
+
+  sceneEl.addEventListener("arError", (event) => {
+    console.log("MindAR failed to start");
+  });
+
+  function setupEventListeners() {
+    // 獲取所有可點擊元素
+    const clickableButtons = [
+      { id: 'btn-website', url: 'https://isaoinvest.com' },
+      { id: 'btn-email', url: 'mailto:isaoinvest@gmail.com' },
+      { id: 'btn-phone', url: 'tel:+886920820259' },
+      { id: 'btn-line', url: 'https://line.me/R/ti/p/@722fdkca' },
+      { id: 'btn-youtube', url: 'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ' },
+      { id: 'btn-ig', url: 'https://www.instagram.com/isaoinvest' },
+      { id: 'btn-fb', url: 'https://www.facebook.com/profile.php?id=61552552833098' }
+    ];
+
+    clickableButtons.forEach(button => {
+      const element = document.querySelector('#' + button.id);
+      if (element) {
+        console.log('Setting up click for:', button.id);
+        element.addEventListener("click", event => {
+          console.log("Button clicked:", button.id, "URL:", button.url);
+          try {
+            if (button.url.startsWith('mailto:') || button.url.startsWith('tel:')) {
+              window.location.href = button.url;
+            } else {
+              window.open(button.url, '_blank');
+            }
+          } catch (error) {
+            console.error('Error opening URL:', error);
+          }
+        });
+
+        // 懸停效果
+        element.addEventListener("mouseenter", () => {
+          if (element.object3D) {
+            gsap.to(element.object3D.scale, {
+              x: 1.4, y: 1.4, z: 1.4, duration: 0.3
+            });
+          }
+        });
+
+        element.addEventListener("mouseleave", () => {
+          if (element.object3D) {
+            gsap.to(element.object3D.scale, {
+              x: 1, y: 1, z: 1, duration: 0.3
+            });
+          }
+        });
+      } else {
+        console.log('Button not found:', button.id);
+      }
+    });
+
+    // 視頻點擊處理
+    const video = document.querySelector("#video1");
+    const videoElement = document.querySelector("#ar-video");
+    const videoTarget = document.querySelector("#video-target");
+    let playing = false;
+    let hasInteracted = false;
+
+    if (videoElement) {
+      videoElement.addEventListener("click", event => {
+        console.log("Video clicked, playing:", playing);
+        
+        if (!hasInteracted) {
+          video.muted = false;
+          hasInteracted = true;
+          console.log("Video unmuted after user interaction");
+        }
+        
+        if (!playing) {
+          video.play();
+          console.log("Video playing");
+        } else {
+          video.pause();
+          console.log("Video paused");
+        }
+        playing = !playing;
+      });
+    }
+
+    // 目標發現/丟失事件
+    if (videoTarget) {
+      videoTarget.addEventListener("targetFound", event => {
+        console.log("Video target found");
+        video.currentTime = 0;
+        
+        if (!hasInteracted) {
+          video.muted = true;
+          video.play().then(() => {
+            playing = true;
+            console.log("Video auto-playing (muted)");
+          }).catch(error => {
+            console.error("Auto-play failed:", error);
+          });
+        }
+      });
+
+      videoTarget.addEventListener("targetLost", event => {
+        console.log("Video target lost, pausing video");
+        video.pause();
+        playing = false;
+      });
+    }
+
+    // 浣熊模型動畫
+    const raccoonModel = document.querySelector("a-gltf-model");
+    if (raccoonModel) {
+      raccoonModel.addEventListener("loaded", () => {
+        console.log("Raccoon model loaded");
+        gsap.to(raccoonModel.object3D.position, {
+          y: "+=0.1",
+          duration: 2,
+          yoyo: true,
+          repeat: -1,
+          ease: "power1.inOut",
+        });
+      });
+    }
+  }
+});
+</script>
 <style>
 body {
   margin: 0;
@@ -15,43 +153,9 @@ body {
   background-color: #000;
   overflow: hidden;
 }
-
-#loading-indicator {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 9999;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 20px;
-  border-radius: 10px;
-  display: none;
-}
-
-#camera-error {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10000;
-  background-color: rgba(255, 0, 0, 0.8);
-  color: white;
-  padding: 20px;
-  border-radius: 10px;
-  display: none;
-  text-align: center;
-}
 </style>
 </head>
 <body>
-<div id="loading-indicator">正在加載AR體驗，請稍候...</div>
-<div id="camera-error">
-  <h3>相機權限錯誤</h3>
-  <p>請允許網站訪問您的相機以使用AR功能</p>
-  <button onclick="location.reload()">重新載入</button>
-</div>
-
 <a-scene
   mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
   color-space="sRGB"
@@ -72,21 +176,15 @@ body {
     <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
   </a-assets>
 
-  <a-camera
-    position="0 0 0"
-    look-controls="enabled: false"
-    cursor="fuse: false; rayOrigin: mouse;"
-    raycaster="far: 1000; objects: .clickable"
-  ></a-camera>
+  <!-- 按照官方文檔的確切配置 -->
+  <a-camera 
+    position="0 0 0" 
+    look-controls="enabled: false" 
+    cursor="fuse: false; rayOrigin: mouse;" 
+    raycaster="near: 10; far: 10000; objects: .clickable">
+  </a-camera>
 
   <a-entity mindar-image-target="targetIndex: 0">
-    <a-entity
-      id="interaction-prompt"
-      position="0 -0.5 -1"
-      text="value: 點擊元素以互動; align: center; color: #FFFFFF; width: 2"
-      animation="property: opacity; from: 0; to: 1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
-    ></a-entity>
-    
     <a-entity
       text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
       position="1.2 0.68 -1.5"
@@ -109,6 +207,7 @@ body {
       rotation="0 0 0"
     ></a-image>
     
+    <!-- 按照官方格式設置可點擊元素 -->
     <a-image
       id="btn-website"
       src="#website"
@@ -117,7 +216,7 @@ body {
       position="0.6 0.4 -1.5"
       rotation="0 0 0"
       class="clickable"
-      custom-click="url: https://isaoinvest.com"
+      opacity="1"
     ></a-image>
     
     <a-image
@@ -128,7 +227,7 @@ body {
       position="0.6 0.1 -1.5"
       rotation="0 0 0"
       class="clickable"
-      custom-click="url: mailto:isaoinvest@gmail.com"
+      opacity="1"
     ></a-image>
     
     <a-image
@@ -139,7 +238,7 @@ body {
       position="0.6 -0.2 -1.5"
       rotation="0 0 0"
       class="clickable"
-      custom-click="url: tel:+886920820259"
+      opacity="1"
     ></a-image>
     
     <a-image
@@ -150,7 +249,7 @@ body {
       position="0.6 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      custom-click="url: https://line.me/R/ti/p/@722fdkca"
+      opacity="1"
     ></a-image>
     
     <a-image
@@ -161,7 +260,7 @@ body {
       position="0.2 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      custom-click="url: https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ"
+      opacity="1"
     ></a-image>
     
     <a-image
@@ -172,7 +271,7 @@ body {
       position="-0.2 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      custom-click="url: https://www.instagram.com/isaoinvest"
+      opacity="1"
     ></a-image>
     
     <a-image
@@ -183,11 +282,11 @@ body {
       position="-0.6 -0.65 -1.5"
       rotation="0 0 0"
       class="clickable"
-      custom-click="url: https://www.facebook.com/profile.php?id=61552552833098"
+      opacity="1"
     ></a-image>
   </a-entity>
 
-  <a-entity mindar-image-target="targetIndex: 1">
+  <a-entity id="video-target" mindar-image-target="targetIndex: 1">
     <a-video
       id="ar-video"
       src="#video1"
@@ -196,260 +295,9 @@ body {
       position="0 0 0"
       rotation="0 0 0"
       class="clickable"
-      click-handler1
+      opacity="1"
     ></a-video>
   </a-entity>
 </a-scene>
-
-<script>
-// 錯誤處理
-window.addEventListener('error', function(e) {
-  console.error('JavaScript error:', e.error);
-});
-
-// 等待A-Frame完全載入後再註冊組件
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded');
-  
-  // 顯示載入指示器
-  const loadingIndicator = document.getElementById("loading-indicator");
-  const cameraError = document.getElementById("camera-error");
-  loadingIndicator.style.display = "block";
-  
-  // 檢查相機權限
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(function(stream) {
-        console.log('Camera permission granted');
-        stream.getTracks().forEach(track => track.stop()); // 停止測試流
-        initializeAR();
-      })
-      .catch(function(error) {
-        console.error('Camera permission denied:', error);
-        loadingIndicator.style.display = "none";
-        cameraError.style.display = "block";
-      });
-  } else {
-    console.error('getUserMedia not supported');
-    loadingIndicator.style.display = "none";
-    cameraError.style.display = "block";
-  }
-});
-
-function initializeAR() {
-  // 註冊自定義點擊處理器
-  AFRAME.registerComponent('custom-click', {
-    schema: {
-      url: {type: 'string'}
-    },
-    init: function () {
-      var el = this.el;
-      var url = this.data.url;
-      
-      console.log('Custom click handler registered for:', url);
-      
-      // 等待元素完全載入
-      const setupEvents = () => {
-        console.log('Setting up events for:', url);
-        
-        // 點擊事件
-        el.addEventListener('click', function(event) {
-          console.log('Custom click triggered for:', url);
-          event.stopPropagation();
-          event.preventDefault();
-          
-          try {
-            if (url.startsWith('mailto:') || url.startsWith('tel:')) {
-              window.location.href = url;
-            } else {
-              window.open(url, '_blank');
-            }
-            console.log('Successfully opened:', url);
-          } catch (error) {
-            console.error('Error opening URL:', error);
-          }
-        });
-        
-        // 觸摸事件
-        el.addEventListener('touchend', function(event) {
-          console.log('Touch end triggered for:', url);
-          event.stopPropagation();
-          event.preventDefault();
-          
-          try {
-            if (url.startsWith('mailto:') || url.startsWith('tel:')) {
-              window.location.href = url;
-            } else {
-              window.open(url, '_blank');
-            }
-            console.log('Successfully opened via touch:', url);
-          } catch (error) {
-            console.error('Error opening URL via touch:', error);
-          }
-        });
-      };
-      
-      if (el.hasLoaded) {
-        setupEvents();
-      } else {
-        el.addEventListener('loaded', setupEvents);
-      }
-    }
-  });
-
-  // 註冊視頻處理器
-  AFRAME.registerComponent("click-handler1", {
-    init: function () {
-      var video = document.querySelector("#video1");
-      var playing = false;
-      var hasInteracted = false;
-      var target = this.el.parentEl;
-      
-      console.log("Video handler initialized");
-      
-      this.el.addEventListener("click", function () {
-        console.log("Video clicked, playing:", playing);
-        
-        if (!hasInteracted) {
-          video.muted = false;
-          hasInteracted = true;
-          console.log("Video unmuted after user interaction");
-        }
-        
-        if (!playing) {
-          video.play();
-          console.log("Video playing");
-        } else {
-          video.pause();
-          console.log("Video paused");
-        }
-        playing = !playing;
-      });
-      
-      target.addEventListener("targetFound", () => {
-        console.log("Video target found");
-        video.currentTime = 0;
-        
-        if (!hasInteracted) {
-          video.muted = true;
-          video.play().then(() => {
-            playing = true;
-            console.log("Video auto-playing (muted)");
-          }).catch(error => {
-            console.error("Auto-play failed:", error);
-          });
-        }
-      });
-      
-      target.addEventListener("targetLost", () => {
-        console.log("Video target lost, pausing video");
-        video.pause();
-        playing = false;
-      });
-    }
-  });
-
-  // 等待場景載入
-  const scene = document.querySelector('a-scene');
-  if (scene) {
-    scene.addEventListener('loaded', function() {
-      console.log('A-Frame scene loaded');
-      
-      setTimeout(() => {
-        document.getElementById("loading-indicator").style.display = "none";
-        initializeAnimations();
-        console.log('AR system fully initialized');
-      }, 3000);
-    });
-  }
-}
-
-function initializeAnimations() {
-  setTimeout(() => {
-    // 浣熊模型動畫
-    const raccoonModel = document.querySelector("a-gltf-model");
-    if (raccoonModel) {
-      raccoonModel.addEventListener("loaded", () => {
-        gsap.to(raccoonModel.object3D.position, {
-          y: "+=0.1",
-          duration: 2,
-          yoyo: true,
-          repeat: -1,
-          ease: "power1.inOut",
-        });
-        console.log("Raccoon animation started");
-      });
-    }
-
-    // 懸停效果
-    const clickableElements = document.querySelectorAll(".clickable");
-    console.log("Found clickable elements:", clickableElements.length);
-    
-    clickableElements.forEach((element, index) => {
-      console.log('Setting up interactions for element', index, ':', element.id);
-      
-      if (element.object3D) {
-        element.addEventListener("mouseenter", () => {
-          console.log('Mouse enter on element', index, '(' + element.id + ')');
-          gsap.to(element.object3D.scale, {
-            x: 1.4,
-            y: 1.4,
-            z: 1.4,
-            duration: 0.3,
-          });
-        });
-        
-        element.addEventListener("mouseleave", () => {
-          console.log('Mouse leave on element', index, '(' + element.id + ')');
-          gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
-        });
-        
-        element.addEventListener("touchstart", (e) => {
-          console.log('Touch start on element', index, '(' + element.id + ')');
-          e.preventDefault();
-          gsap.to(element.object3D.scale, {
-            x: 1.4,
-            y: 1.4,
-            z: 1.4,
-            duration: 0.3,
-          });
-        });
-        
-        element.addEventListener("touchend", (e) => {
-          console.log('Touch end on element', index, '(' + element.id + ')');
-          setTimeout(() => {
-            gsap.to(element.object3D.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
-          }, 100);
-        });
-      }
-    });
-    
-    // 測試按鈕
-    const testButtons = [
-      'btn-website', 'btn-email', 'btn-phone', 
-      'btn-line', 'btn-youtube', 'btn-ig', 'btn-fb'
-    ];
-    
-    testButtons.forEach(buttonId => {
-      const button = document.getElementById(buttonId);
-      if (button) {
-        console.log('Found button:', buttonId);
-      } else {
-        console.log('Button not found:', buttonId);
-      }
-    });
-    
-  }, 1000);
-}
-
-// 調試用的全域點擊監聽器
-document.addEventListener('click', function(event) {
-  console.log('Global click detected at:', event.clientX, event.clientY);
-  console.log('Target element:', event.target);
-  console.log('Target tagName:', event.target.tagName);
-});
-
-console.log("AR Business Card system initialized");
-</script>
 </body>
 </html>
