@@ -248,13 +248,6 @@
       <!-- 第一個AR目標 - 名片內容 -->
       <a-entity mindar-image-target="targetIndex: 0">
         <a-entity
-          id="interaction-prompt"
-          position="0 -0.5 -1"
-          text="value: 點擊元素以互動; align: center; color: #FFFFFF; width: 2"
-          animation="property: opacity; from: 0; to: 1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
-        ></a-entity>
-        
-        <a-entity
           text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
           position="1.2 0.68 -1.5"
           scale="2 2 2"
@@ -367,39 +360,48 @@
       AFRAME.registerComponent("video-handler", {
         init: function () {
           var video = document.querySelector("#video1");
-          var arVideo = this.el;
+          var scene = this.el.sceneEl;
+          var target = this.el.parentEl;
           var isPlaying = false;
           
-          // 當AR目標被發現時自動播放影片
-          this.el.sceneEl.addEventListener("targetFound", (event) => {
-            if (event.detail.target.targetIndex === 1) {
-              console.log("Target 1 found, playing video");
+          console.log("Video handler initialized");
+          
+          // 監聽目標發現事件
+          target.addEventListener("targetFound", () => {
+            console.log("Video target found, attempting to play");
+            video.currentTime = 0; // 重置到開始
+            video.play().then(() => {
+              isPlaying = true;
+              console.log("Video playing successfully");
+            }).catch(error => {
+              console.error("Video play failed:", error);
+              // 如果自動播放失敗，嘗試靜音播放
+              video.muted = true;
               video.play().then(() => {
                 isPlaying = true;
-                console.log("Video playing successfully");
-              }).catch(error => {
-                console.error("Video play failed:", error);
+                console.log("Video playing muted");
+              }).catch(err => {
+                console.error("Muted video play also failed:", err);
               });
-            }
+            });
           });
           
-          // 當AR目標丟失時暫停影片
-          this.el.sceneEl.addEventListener("targetLost", (event) => {
-            if (event.detail.target.targetIndex === 1) {
-              console.log("Target 1 lost, pausing video");
-              video.pause();
-              isPlaying = false;
-            }
+          // 監聽目標丟失事件
+          target.addEventListener("targetLost", () => {
+            console.log("Video target lost, pausing video");
+            video.pause();
+            isPlaying = false;
           });
           
           // 點擊控制播放/暫停
           this.el.addEventListener("click", function () {
+            console.log("Video clicked, current playing state:", isPlaying);
             if (!isPlaying) {
               video.play().then(() => {
                 isPlaying = true;
                 console.log("Video resumed by click");
               }).catch(error => {
-                console.error("Video play failed:", error);
+                console.error("Click play failed:", error);
               });
             } else {
               video.pause();
@@ -407,6 +409,14 @@
               console.log("Video paused by click");
             }
           });
+          
+          // 監聽影片事件
+          video.addEventListener('loadstart', () => console.log('Video load started'));
+          video.addEventListener('loadeddata', () => console.log('Video data loaded'));
+          video.addEventListener('canplay', () => console.log('Video can play'));
+          video.addEventListener('playing', () => console.log('Video is playing'));
+          video.addEventListener('pause', () => console.log('Video paused'));
+          video.addEventListener('error', (e) => console.error('Video error:', e));
         },
       });
 
@@ -443,10 +453,10 @@
           loadingIndicator.style.display = "none";
           scannerFrame.style.display = "block";
           
-          // 3秒後隱藏掃描框
+          // 5秒後隱藏掃描框
           setTimeout(() => {
             scannerFrame.style.display = "none";
-          }, 3000);
+          }, 5000);
         }, 1000);
       });
 
@@ -462,10 +472,10 @@
         loadingIndicator.style.display = "none";
         scannerFrame.style.display = "block";
         
-        // 3秒後隱藏掃描框
+        // 5秒後隱藏掃描框
         setTimeout(() => {
           scannerFrame.style.display = "none";
-        }, 3000);
+        }, 5000);
       });
 
       document.querySelector("a-scene").addEventListener("arError", (event) => {
