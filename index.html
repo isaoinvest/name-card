@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
 <script>
@@ -131,67 +132,38 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
-    // 浣熊模型動畫 - 改進載入和動畫設置
+    // 浣熊模型動畫 - 簡化設置，讓animation-mixer處理內建動畫
     const raccoonModel = document.querySelector("#raccoon-model");
     if (raccoonModel) {
-      console.log("Setting up raccoon animation");
+      console.log("Raccoon model found, animation-mixer should handle built-in animations");
       
-      // 檢查模型是否已經載入
-      if (raccoonModel.hasLoaded) {
-        console.log("Raccoon model already loaded, starting animation");
-        startRaccoonAnimation(raccoonModel);
-      } else {
-        // 監聽模型載入事件
-        raccoonModel.addEventListener("model-loaded", () => {
-          console.log("Raccoon model loaded via model-loaded event");
-          startRaccoonAnimation(raccoonModel);
-        });
-        
-        // 備用方案：監聽loaded事件
-        raccoonModel.addEventListener("loaded", () => {
-          console.log("Raccoon model loaded via loaded event");
-          startRaccoonAnimation(raccoonModel);
-        });
-        
-        // 第三個備用方案：延遲檢查
-        setTimeout(() => {
-          if (raccoonModel.object3D && raccoonModel.object3D.children.length > 0) {
-            console.log("Raccoon model loaded via timeout check");
-            startRaccoonAnimation(raccoonModel);
-          }
-        }, 2000);
-      }
+      // 檢查模型載入狀態
+      raccoonModel.addEventListener("model-loaded", () => {
+        console.log("Raccoon model loaded successfully - animations should be playing");
+      });
+      
+      // 可選：添加額外的浮動效果
+      raccoonModel.addEventListener("model-loaded", () => {
+        console.log("Adding extra floating animation to raccoon");
+        if (raccoonModel.object3D) {
+          gsap.to(raccoonModel.object3D.position, {
+            y: raccoonModel.object3D.position.y + 0.05,
+            duration: 3,
+            yoyo: true,
+            repeat: -1,
+            ease: "power1.inOut",
+          });
+        }
+      });
     } else {
       console.log("Raccoon model element not found");
     }
   }
 
   function startRaccoonAnimation(raccoonModel) {
-    if (raccoonModel.object3D) {
-      console.log("Starting raccoon floating animation");
-      
-      // 浮動動畫
-      gsap.to(raccoonModel.object3D.position, {
-        y: raccoonModel.object3D.position.y + 0.1,
-        duration: 2,
-        yoyo: true,
-        repeat: -1,
-        ease: "power1.inOut",
-      });
-      
-      // 可選：添加輕微的旋轉動畫
-      gsap.to(raccoonModel.object3D.rotation, {
-        y: raccoonModel.object3D.rotation.y + 0.2,
-        duration: 4,
-        yoyo: true,
-        repeat: -1,
-        ease: "power1.inOut",
-      });
-      
-      console.log("Raccoon animation started successfully");
-    } else {
-      console.log("Raccoon object3D not available");
-    }
+    // 這個函數現在不需要了，因為animation-mixer會自動處理
+    console.log("animation-mixer will handle the built-in drum animation automatically");
+  }
   }
 });
 </script>
@@ -246,7 +218,7 @@ body {
       position="-0.25 -0.15 0"
       scale="0.09 0.09 0.09"
       src="#raccoonModel"
-      animation-mixer="clip: *"
+      animation-mixer
     ></a-gltf-model>
     
     <a-image
