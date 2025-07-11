@@ -28,6 +28,8 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   function setupEventListeners() {
+    console.log("Setting up event listeners");
+    
     // 獲取所有可點擊元素
     const clickableButtons = [
       { id: 'btn-website', url: 'https://isaoinvest.com' },
@@ -129,19 +131,66 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
-    // 浣熊模型動畫
-    const raccoonModel = document.querySelector("a-gltf-model");
+    // 浣熊模型動畫 - 改進載入和動畫設置
+    const raccoonModel = document.querySelector("#raccoon-model");
     if (raccoonModel) {
-      raccoonModel.addEventListener("loaded", () => {
-        console.log("Raccoon model loaded");
-        gsap.to(raccoonModel.object3D.position, {
-          y: "+=0.1",
-          duration: 2,
-          yoyo: true,
-          repeat: -1,
-          ease: "power1.inOut",
+      console.log("Setting up raccoon animation");
+      
+      // 檢查模型是否已經載入
+      if (raccoonModel.hasLoaded) {
+        console.log("Raccoon model already loaded, starting animation");
+        startRaccoonAnimation(raccoonModel);
+      } else {
+        // 監聽模型載入事件
+        raccoonModel.addEventListener("model-loaded", () => {
+          console.log("Raccoon model loaded via model-loaded event");
+          startRaccoonAnimation(raccoonModel);
         });
+        
+        // 備用方案：監聽loaded事件
+        raccoonModel.addEventListener("loaded", () => {
+          console.log("Raccoon model loaded via loaded event");
+          startRaccoonAnimation(raccoonModel);
+        });
+        
+        // 第三個備用方案：延遲檢查
+        setTimeout(() => {
+          if (raccoonModel.object3D && raccoonModel.object3D.children.length > 0) {
+            console.log("Raccoon model loaded via timeout check");
+            startRaccoonAnimation(raccoonModel);
+          }
+        }, 2000);
+      }
+    } else {
+      console.log("Raccoon model element not found");
+    }
+  }
+
+  function startRaccoonAnimation(raccoonModel) {
+    if (raccoonModel.object3D) {
+      console.log("Starting raccoon floating animation");
+      
+      // 浮動動畫
+      gsap.to(raccoonModel.object3D.position, {
+        y: raccoonModel.object3D.position.y + 0.1,
+        duration: 2,
+        yoyo: true,
+        repeat: -1,
+        ease: "power1.inOut",
       });
+      
+      // 可選：添加輕微的旋轉動畫
+      gsap.to(raccoonModel.object3D.rotation, {
+        y: raccoonModel.object3D.rotation.y + 0.2,
+        duration: 4,
+        yoyo: true,
+        repeat: -1,
+        ease: "power1.inOut",
+      });
+      
+      console.log("Raccoon animation started successfully");
+    } else {
+      console.log("Raccoon object3D not available");
     }
   }
 });
@@ -192,11 +241,12 @@ body {
     ></a-entity>
     
     <a-gltf-model
+      id="raccoon-model"
       rotation="0 0 0"
       position="-0.25 -0.15 0"
       scale="0.09 0.09 0.09"
       src="#raccoonModel"
-      animation-mixer
+      animation-mixer="clip: *"
     ></a-gltf-model>
     
     <a-image
