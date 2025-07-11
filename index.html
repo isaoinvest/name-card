@@ -4,12 +4,15 @@
 <title>AR Business Card</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<!-- 按照官方文檔的正確載入順序 -->
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+  console.log('DOM loaded');
+  
   const sceneEl = document.querySelector('a-scene');
   let arSystem;
   
@@ -18,20 +21,33 @@ document.addEventListener("DOMContentLoaded", function() {
     console.log("MindAR system loaded");
   });
 
-  // 等待場景載入後設置事件監聽器
+  // 等待AR準備就緒後設置所有事件監聽器
   sceneEl.addEventListener("arReady", (event) => {
     console.log("MindAR is ready");
-    setupEventListeners();
+    setupAllEventListeners();
   });
 
   sceneEl.addEventListener("arError", (event) => {
     console.log("MindAR failed to start");
   });
 
-  function setupEventListeners() {
-    console.log("Setting up event listeners");
+  function setupAllEventListeners() {
+    console.log("Setting up all event listeners");
     
-    // 獲取所有可點擊元素
+    // 設置按鈕點擊事件
+    setupButtonClickEvents();
+    
+    // 設置視頻事件
+    setupVideoEvents();
+    
+    // 設置浣熊動畫
+    setupRaccoonAnimation();
+    
+    // 設置懸停效果
+    setupHoverEffects();
+  }
+
+  function setupButtonClickEvents() {
     const clickableButtons = [
       { id: 'btn-website', url: 'https://isaoinvest.com' },
       { id: 'btn-email', url: 'mailto:isaoinvest@gmail.com' },
@@ -48,48 +64,40 @@ document.addEventListener("DOMContentLoaded", function() {
         console.log('Setting up click for:', button.id);
         element.addEventListener("click", event => {
           console.log("Button clicked:", button.id, "URL:", button.url);
+          event.stopPropagation();
+          event.preventDefault();
+          
           try {
             if (button.url.startsWith('mailto:') || button.url.startsWith('tel:')) {
               window.location.href = button.url;
             } else {
               window.open(button.url, '_blank');
             }
+            console.log('Successfully opened:', button.url);
           } catch (error) {
             console.error('Error opening URL:', error);
-          }
-        });
-
-        // 懸停效果
-        element.addEventListener("mouseenter", () => {
-          if (element.object3D) {
-            gsap.to(element.object3D.scale, {
-              x: 1.4, y: 1.4, z: 1.4, duration: 0.3
-            });
-          }
-        });
-
-        element.addEventListener("mouseleave", () => {
-          if (element.object3D) {
-            gsap.to(element.object3D.scale, {
-              x: 1, y: 1, z: 1, duration: 0.3
-            });
           }
         });
       } else {
         console.log('Button not found:', button.id);
       }
     });
+  }
 
-    // 視頻點擊處理
+  function setupVideoEvents() {
     const video = document.querySelector("#video1");
     const videoElement = document.querySelector("#ar-video");
     const videoTarget = document.querySelector("#video-target");
     let playing = false;
     let hasInteracted = false;
 
-    if (videoElement) {
+    if (videoElement && video) {
+      console.log("Setting up video events");
+      
       videoElement.addEventListener("click", event => {
         console.log("Video clicked, playing:", playing);
+        event.stopPropagation();
+        event.preventDefault();
         
         if (!hasInteracted) {
           video.muted = false;
@@ -98,18 +106,21 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         if (!playing) {
-          video.play();
-          console.log("Video playing");
+          video.play().then(() => {
+            playing = true;
+            console.log("Video playing");
+          }).catch(error => {
+            console.error("Video play failed:", error);
+          });
         } else {
           video.pause();
+          playing = false;
           console.log("Video paused");
         }
-        playing = !playing;
       });
     }
 
-    // 目標發現/丟失事件
-    if (videoTarget) {
+    if (videoTarget && video) {
       videoTarget.addEventListener("targetFound", event => {
         console.log("Video target found");
         video.currentTime = 0;
@@ -131,41 +142,79 @@ document.addEventListener("DOMContentLoaded", function() {
         playing = false;
       });
     }
+  }
 
-    // 浣熊模型動畫 - 簡化設置，讓animation-mixer處理內建動畫
+  function setupRaccoonAnimation() {
     const raccoonModel = document.querySelector("#raccoon-model");
     if (raccoonModel) {
-      console.log("Raccoon model found, animation-mixer should handle built-in animations");
+      console.log("Raccoon model found - animation-mixer will handle built-in animations");
       
-      // 檢查模型載入狀態
+      // 監聽模型載入事件
       raccoonModel.addEventListener("model-loaded", () => {
-        console.log("Raccoon model loaded successfully - animations should be playing");
-      });
-      
-      // 可選：添加額外的浮動效果
-      raccoonModel.addEventListener("model-loaded", () => {
-        console.log("Adding extra floating animation to raccoon");
+        console.log("Raccoon model loaded - built-in animations should be playing");
+        
+        // 添加輕微的額外浮動效果
         if (raccoonModel.object3D) {
           gsap.to(raccoonModel.object3D.position, {
-            y: raccoonModel.object3D.position.y + 0.05,
+            y: raccoonModel.object3D.position.y + 0.03,
             duration: 3,
             yoyo: true,
             repeat: -1,
             ease: "power1.inOut",
           });
+          console.log("Added subtle floating animation to raccoon");
         }
       });
-    } else {
-      console.log("Raccoon model element not found");
     }
   }
 
-  function startRaccoonAnimation(raccoonModel) {
-    // 這個函數現在不需要了，因為animation-mixer會自動處理
-    console.log("animation-mixer will handle the built-in drum animation automatically");
-  }
+  function setupHoverEffects() {
+    const clickableElements = document.querySelectorAll(".clickable");
+    console.log("Found clickable elements:", clickableElements.length);
+    
+    clickableElements.forEach((element, index) => {
+      if (element.object3D) {
+        element.addEventListener("mouseenter", () => {
+          console.log('Mouse enter on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1.4, y: 1.4, z: 1.4, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("mouseleave", () => {
+          console.log('Mouse leave on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1, y: 1, z: 1, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("touchstart", (e) => {
+          console.log('Touch start on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1.4, y: 1.4, z: 1.4, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("touchend", (e) => {
+          console.log('Touch end on element', index, '(' + element.id + ')');
+          setTimeout(() => {
+            gsap.to(element.object3D.scale, {
+              x: 1, y: 1, z: 1, duration: 0.3
+            });
+          }, 100);
+        });
+      }
+    });
   }
 });
+
+// 調試用的全域點擊監聽器
+document.addEventListener('click', function(event) {
+  console.log('Global click detected at:', event.clientX, event.clientY);
+  console.log('Target element:', event.target);
+});
+
+console.log("AR Business Card system initialized");
 </script>
 <style>
 body {
@@ -197,7 +246,7 @@ body {
     <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
   </a-assets>
 
-  <!-- 按照官方文檔的確切配置 -->
+  <!-- 按照官方文檔的相機配置 -->
   <a-camera 
     position="0 0 0" 
     look-controls="enabled: false" 
@@ -212,6 +261,7 @@ body {
       scale="2 2 2"
     ></a-entity>
     
+    <!-- 小浣熊模型 - 按照官方文檔設置 -->
     <a-gltf-model
       id="raccoon-model"
       rotation="0 0 0"
@@ -229,7 +279,7 @@ body {
       rotation="0 0 0"
     ></a-image>
     
-    <!-- 按照官方格式設置可點擊元素 -->
+    <!-- 按鈕元素 - 確保正確的class和屬性 -->
     <a-image
       id="btn-website"
       src="#website"
