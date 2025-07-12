@@ -1,4 +1,5 @@
-/* global AFRAME, THREE */AFRAME.registerComponent('hologram-effect', {
+/* global AFRAME, THREE */
+AFRAME.registerComponent('hologram-effect', {
   schema: {
     color: {type: 'color', default: '#00ffff'},
     emissiveColor: {type: 'color', default: '#00ffff'},
@@ -15,7 +16,7 @@
 
     // Wait for the model to be loaded
     el.addEventListener('model-loaded', () => {
-      const model = el.getObject3D('mesh');
+      const model = el.object3D;
       if (!model) {
         console.error("Hologram component could not find a mesh on the element.");
         return;
