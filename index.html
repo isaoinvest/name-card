@@ -1,314 +1,53 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<title>Holographic AR Business Card</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>AR Business Card</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<!-- 載入AR庫 -->
+<!-- 按照官方文檔的正確載入順序 -->
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/mindar-image-aframe.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/gsap.min.js"></script>
-
-<style>
-body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: #000;
-}
-
-#ar-scene {
-  width: 100vw;
-  height: 100vh;
-  display: block;
-}
-
-/* 全息效果覆蓋層 */
-.hologram-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 10;
-  mix-blend-mode: screen;
-}
-
-/* 掃描線效果 */
-.scanlines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 255, 255, 0.02) 50%,
-    transparent 100%
-  );
-  background-size: 100% 5px;
-  animation: scanline 2s linear infinite;
-}
-
-@keyframes scanline {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 20px; }
-}
-
-/* 控制按鈕 */
-.control-panel {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  z-index: 100;
-}
-
-.holo-btn {
-  padding: 10px 20px;
-  background: rgba(0, 255, 255, 0.2);
-  border: 2px solid #00ffff;
-  color: #00ffff;
-  cursor: pointer;
-  font-family: monospace;
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.holo-btn:hover {
-  background: rgba(0, 255, 255, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(0, 255, 255, 0.5);
-}
-
-/* 載入提示 */
-.loading {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #00ffff;
-  font-family: monospace;
-  font-size: 20px;
-  z-index: 1000;
-}
-</style>
-</head>
-<body>
-
-<div class="loading" id="loading">Initializing AR...</div>
-
-<!-- 全息效果覆蓋層 -->
-<div class="hologram-overlay">
-  <div class="scanlines"></div>
-</div>
-
-<!-- AR場景 -->
-<a-scene
-  id="ar-scene"
-  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
-  color-space="sRGB"
-  renderer="colorManagement: true; physicallyCorrectLights: true"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false"
-  embedded
->
-  <a-assets>
-    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" />
-    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" />
-    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" />
-    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" />
-    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" />
-    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" />
-    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" />
-    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" />
-    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
-    <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
-  </a-assets>
-
-  <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;" raycaster="near: 10; far: 10000; objects: .clickable"></a-camera>
-
-  <!-- 環境光源 -->
-  <a-light type="ambient" color="#001122" intensity="0.5"></a-light>
-  <a-light type="point" color="#00ffff" intensity="2" position="0 2 0"></a-light>
-
-  <!-- 第一個目標：名片 -->
-  <a-entity mindar-image-target="targetIndex: 0">
-    <!-- 背景光暈 -->
-    <a-plane
-      position="0 0 -2"
-      width="4"
-      height="3"
-      material="color: #00ffff; transparent: true; opacity: 0.1; emissive: #00ffff; emissiveIntensity: 0.5"
-    ></a-plane>
-    
-    <!-- 標題文字 -->
-    <a-text
-      value="Red Panda Keeper\nMingHsun Li"
-      color="#00ffff"
-      position="1.2 0.68 -1.5"
-      scale="2 2 2"
-      align="center"
-      font="kelsonsans"
-    ></a-text>
-    
-    <!-- 小浣熊模型 -->
-    <a-gltf-model
-      id="raccoon-model"
-      rotation="0 0 0"
-      position="-0.25 -0.15 0"
-      scale="0.09 0.09 0.09"
-      src="#raccoonModel"
-      animation-mixer
-      animation="property: rotation; to: 0 360 0; dur: 10000; loop: true; easing: linear"
-    ></a-gltf-model>
-    
-    <!-- 個人照片 -->
-    <a-image
-      src="#profile"
-      width="0.55"
-      height="0.55"
-      position="0.6 0.9 -1.5"
-      material="emissive: #00ffff; emissiveIntensity: 0.2"
-    ></a-image>
-    
-    <!-- 按鈕組 -->
-    <a-image
-      id="btn-website"
-      src="#website"
-      width="0.65"
-      height="0.25"
-      position="0.6 0.4 -1.5"
-      class="clickable"
-      material="emissive: #00ff88; emissiveIntensity: 0.3"
-    ></a-image>
-    
-    <a-image
-      id="btn-email"
-      src="#Email"
-      width="0.65"
-      height="0.25"
-      position="0.6 0.1 -1.5"
-      class="clickable"
-      material="emissive: #ff8800; emissiveIntensity: 0.3"
-    ></a-image>
-    
-    <a-image
-      id="btn-phone"
-      src="#phone"
-      width="0.65"
-      height="0.23"
-      position="0.6 -0.2 -1.5"
-      class="clickable"
-      material="emissive: #00ffff; emissiveIntensity: 0.3"
-    ></a-image>
-    
-    <!-- 社交媒體按鈕 -->
-    <a-image
-      id="btn-line"
-      src="#image-LINE"
-      width="0.3"
-      height="0.3"
-      position="0.6 -0.65 -1.5"
-      class="clickable"
-      material="emissive: #00ff00; emissiveIntensity: 0.4"
-    ></a-image>
-    
-    <a-image
-      id="btn-youtube"
-      src="#image-Youtube"
-      width="0.3"
-      height="0.3"
-      position="0.2 -0.65 -1.5"
-      class="clickable"
-      material="emissive: #ff0000; emissiveIntensity: 0.4"
-    ></a-image>
-    
-    <a-image
-      id="btn-ig"
-      src="#image-IG"
-      width="0.3"
-      height="0.3"
-      position="-0.2 -0.65 -1.5"
-      class="clickable"
-      material="emissive: #ff00ff; emissiveIntensity: 0.4"
-    ></a-image>
-    
-    <a-image
-      id="btn-fb"
-      src="#image-FB"
-      width="0.3"
-      height="0.3"
-      position="-0.6 -0.65 -1.5"
-      class="clickable"
-      material="emissive: #0088ff; emissiveIntensity: 0.4"
-    ></a-image>
-  </a-entity>
-
-  <!-- 第二個目標：視頻 -->
-  <a-entity id="video-target" mindar-image-target="targetIndex: 1">
-    <a-video
-      id="ar-video"
-      src="#video1"
-      height="1.05"
-      width="1.5"
-      position="0 0 0"
-      class="clickable"
-      material="emissive: #00ccff; emissiveIntensity: 0.3"
-    ></a-video>
-    
-    <!-- 視頻邊框 -->
-    <a-ring
-      radius-inner="0.8"
-      radius-outer="0.85"
-      position="0 0 -0.05"
-      material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 1"
-      animation="property: rotation; to: 0 0 360; dur: 20000; loop: true; easing: linear"
-    ></a-ring>
-  </a-entity>
-</a-scene>
-
-<!-- 控制面板 -->
-<div class="control-panel">
-  <button class="holo-btn" onclick="toggleEffect('scanlines')">SCANLINES</button>
-  <button class="holo-btn" onclick="toggleEffect('glow')">GLOW</button>
-  <button class="holo-btn" onclick="resetAR()">RESET</button>
-</div>
-
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  console.log('AR System initializing...');
+  console.log('DOM loaded');
   
   const sceneEl = document.querySelector('a-scene');
-  const loadingEl = document.getElementById('loading');
+  let arSystem;
   
-  // 場景載入完成
   sceneEl.addEventListener('loaded', function () {
-    console.log("A-Frame loaded");
-    setTimeout(() => {
-      loadingEl.style.display = 'none';
-    }, 2000);
+    arSystem = sceneEl.systems["mindar-image-system"];
+    console.log("MindAR system loaded");
   });
 
-  // AR準備就緒
+  // 等待AR準備就緒後設置所有事件監聽器
   sceneEl.addEventListener("arReady", (event) => {
-    console.log("AR is ready");
-    setupEventListeners();
+    console.log("MindAR is ready");
+    setupAllEventListeners();
   });
 
-  // AR錯誤處理
   sceneEl.addEventListener("arError", (event) => {
-    console.log("AR failed to start:", event);
-    loadingEl.textContent = "AR Error - Please refresh";
+    console.log("MindAR failed to start");
   });
 
-  function setupEventListeners() {
-    // 按鈕點擊事件
+  function setupAllEventListeners() {
+    console.log("Setting up all event listeners");
+    
+    // 設置按鈕點擊事件
+    setupButtonClickEvents();
+    
+    // 設置視頻事件
+    setupVideoEvents();
+    
+    // 設置浣熊動畫
+    setupRaccoonAnimation();
+    
+    // 設置懸停效果
+    setupHoverEffects();
+  }
+
+  function setupButtonClickEvents() {
     const clickableButtons = [
       { id: 'btn-website', url: 'https://isaoinvest.com' },
       { id: 'btn-email', url: 'mailto:isaoinvest@gmail.com' },
@@ -322,63 +61,56 @@ document.addEventListener("DOMContentLoaded", function() {
     clickableButtons.forEach(button => {
       const element = document.querySelector('#' + button.id);
       if (element) {
+        console.log('Setting up click for:', button.id);
         element.addEventListener("click", event => {
-          console.log("Button clicked:", button.id);
+          console.log("Button clicked:", button.id, "URL:", button.url);
           event.stopPropagation();
+          event.preventDefault();
           
-          // 點擊動畫
-          gsap.to(element.object3D.scale, {
-            x: 1.2, y: 1.2, z: 1.2,
-            duration: 0.1,
-            yoyo: true,
-            repeat: 1,
-            onComplete: () => {
-              if (button.url.startsWith('mailto:') || button.url.startsWith('tel:')) {
-                window.location.href = button.url;
-              } else {
-                window.open(button.url, '_blank');
-              }
+          try {
+            if (button.url.startsWith('mailto:') || button.url.startsWith('tel:')) {
+              window.location.href = button.url;
+            } else {
+              window.open(button.url, '_blank');
             }
-          });
+            console.log('Successfully opened:', button.url);
+          } catch (error) {
+            console.error('Error opening URL:', error);
+          }
         });
-
-        // 懸停效果
-        element.addEventListener("mouseenter", () => {
-          gsap.to(element.object3D.scale, {
-            x: 1.1, y: 1.1, z: 1.1,
-            duration: 0.3
-          });
-        });
-
-        element.addEventListener("mouseleave", () => {
-          gsap.to(element.object3D.scale, {
-            x: 1, y: 1, z: 1,
-            duration: 0.3
-          });
-        });
+      } else {
+        console.log('Button not found:', button.id);
       }
     });
+  }
 
-    // 視頻控制
+  function setupVideoEvents() {
     const video = document.querySelector("#video1");
     const videoElement = document.querySelector("#ar-video");
     const videoTarget = document.querySelector("#video-target");
     let playing = false;
+    let hasInteracted = false;
 
     if (videoElement && video) {
+      console.log("Setting up video events");
+      
       videoElement.addEventListener("click", event => {
+        console.log("Video clicked, playing:", playing);
         event.stopPropagation();
+        event.preventDefault();
+        
+        if (!hasInteracted) {
+          video.muted = false;
+          hasInteracted = true;
+          console.log("Video unmuted after user interaction");
+        }
         
         if (!playing) {
           video.play().then(() => {
             playing = true;
             console.log("Video playing");
           }).catch(error => {
-            console.error("Play failed:", error);
-            video.muted = true;
-            video.play().then(() => {
-              playing = true;
-            });
+            console.error("Video play failed:", error);
           });
         } else {
           video.pause();
@@ -388,79 +120,256 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }
 
-    if (videoTarget) {
+    if (videoTarget && video) {
       videoTarget.addEventListener("targetFound", event => {
         console.log("Video target found");
-        video.muted = true;
-        video.play().catch(e => console.log("Auto-play blocked"));
+        video.currentTime = 0;
+        
+        if (!hasInteracted) {
+          video.muted = true;
+          video.play().then(() => {
+            playing = true;
+            console.log("Video auto-playing (muted)");
+          }).catch(error => {
+            console.error("Auto-play failed:", error);
+          });
+        }
       });
 
       videoTarget.addEventListener("targetLost", event => {
-        console.log("Video target lost");
+        console.log("Video target lost, pausing video");
         video.pause();
         playing = false;
       });
     }
   }
-});
 
-// 效果控制
-let effects = {
-  scanlines: true,
-  glow: true
-};
+  function setupRaccoonAnimation() {
+    const raccoonModel = document.querySelector("#raccoon-model");
+    if (raccoonModel) {
+      console.log("Raccoon model found - animation-mixer will handle built-in animations");
+      
+      // 監聽模型載入事件
+      raccoonModel.addEventListener("model-loaded", () => {
+        console.log("Raccoon model loaded - built-in animations should be playing");
+        
+        // 添加輕微的額外浮動效果
+        if (raccoonModel.object3D) {
+          gsap.to(raccoonModel.object3D.position, {
+            y: raccoonModel.object3D.position.y + 0.03,
+            duration: 3,
+            yoyo: true,
+            repeat: -1,
+            ease: "power1.inOut",
+          });
+          console.log("Added subtle floating animation to raccoon");
+        }
+      });
+    }
+  }
 
-function toggleEffect(effect) {
-  effects[effect] = !effects[effect];
-  
-  if (effect === 'scanlines') {
-    document.querySelector('.scanlines').style.display = 
-      effects.scanlines ? 'block' : 'none';
-  } else if (effect === 'glow') {
-    const elements = document.querySelectorAll('[material]');
-    elements.forEach(el => {
-      const material = el.getAttribute('material');
-      if (material && material.includes('emissive')) {
-        el.setAttribute('material', 'emissiveIntensity', 
-          effects.glow ? '0.3' : '0');
+  function setupHoverEffects() {
+    const clickableElements = document.querySelectorAll(".clickable");
+    console.log("Found clickable elements:", clickableElements.length);
+    
+    clickableElements.forEach((element, index) => {
+      if (element.object3D) {
+        element.addEventListener("mouseenter", () => {
+          console.log('Mouse enter on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1.4, y: 1.4, z: 1.4, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("mouseleave", () => {
+          console.log('Mouse leave on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1, y: 1, z: 1, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("touchstart", (e) => {
+          console.log('Touch start on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1.4, y: 1.4, z: 1.4, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("touchend", (e) => {
+          console.log('Touch end on element', index, '(' + element.id + ')');
+          setTimeout(() => {
+            gsap.to(element.object3D.scale, {
+              x: 1, y: 1, z: 1, duration: 0.3
+            });
+          }, 100);
+        });
       }
     });
   }
-}
+});
 
-function resetAR() {
-  window.location.reload();
-}
+// 調試用的全域點擊監聽器
+document.addEventListener('click', function(event) {
+  console.log('Global click detected at:', event.clientX, event.clientY);
+  console.log('Target element:', event.target);
+});
 
-// 創建粒子效果
-function createParticle() {
-  const scene = document.querySelector('a-scene');
-  const particle = document.createElement('a-sphere');
-  
-  particle.setAttribute('radius', '0.01');
-  particle.setAttribute('material', 'color: #00ffff; emissive: #00ffff; emissiveIntensity: 2');
-  particle.setAttribute('position', `${(Math.random() - 0.5) * 3} ${Math.random() * 2 - 1} ${-2 + Math.random()}`);
-  
-  scene.appendChild(particle);
-  
-  gsap.to(particle.object3D.position, {
-    y: particle.object3D.position.y + 2,
-    duration: 4,
-    ease: "none",
-    onComplete: () => {
-      scene.removeChild(particle);
-    }
-  });
-  
-  gsap.to(particle.getAttribute('material'), {
-    opacity: 0,
-    duration: 4
-  });
-}
-
-// 定期創建粒子
-setInterval(createParticle, 500);
+console.log("AR Business Card system initialized");
 </script>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  overflow: hidden;
+}
+</style>
+</head>
+<body>
+<a-scene
+  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
+  color-space="sRGB"
+  renderer="colorManagement: true, physicallyCorrectLights"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+>
+  <a-assets>
+    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" alt="Profile Photo" />
+    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" alt="Website Button" />
+    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" alt="Email Button" />
+    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" alt="Phone Button" />
+    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" alt="LINE Button" />
+    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" alt="YouTube Button" />
+    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" alt="Instagram Button" />
+    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" alt="Facebook Button" />
+    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
+    <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
+  </a-assets>
 
+  <!-- 按照官方文檔的相機配置 -->
+  <a-camera 
+    position="0 0 0" 
+    look-controls="enabled: false" 
+    cursor="fuse: false; rayOrigin: mouse;" 
+    raycaster="near: 10; far: 10000; objects: .clickable">
+  </a-camera>
+
+  <a-entity mindar-image-target="targetIndex: 0">
+    <a-entity
+      text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
+      position="1.2 0.68 -1.5"
+      scale="2 2 2"
+    ></a-entity>
+    
+    <!-- 小浣熊模型 - 按照官方文檔設置 -->
+    <a-gltf-model
+      id="raccoon-model"
+      rotation="0 0 0"
+      position="-0.25 -0.15 0"
+      scale="0.09 0.09 0.09"
+      src="#raccoonModel"
+      animation-mixer
+    ></a-gltf-model>
+    
+    <a-image
+      src="#profile"
+      width="0.55"
+      height="0.55"
+      position="0.6 0.9 -1.5"
+      rotation="0 0 0"
+    ></a-image>
+    
+    <!-- 按鈕元素 - 確保正確的class和屬性 -->
+    <a-image
+      id="btn-website"
+      src="#website"
+      width="0.65"
+      height="0.25"
+      position="0.6 0.4 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-email"
+      src="#Email"
+      width="0.65"
+      height="0.25"
+      position="0.6 0.1 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-phone"
+      src="#phone"
+      width="0.65"
+      height="0.23"
+      position="0.6 -0.2 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-line"
+      src="#image-LINE"
+      width="0.3"
+      height="0.3"
+      position="0.6 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-youtube"
+      src="#image-Youtube"
+      width="0.3"
+      height="0.3"
+      position="0.2 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-ig"
+      src="#image-IG"
+      width="0.3"
+      height="0.3"
+      position="-0.2 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-fb"
+      src="#image-FB"
+      width="0.3"
+      height="0.3"
+      position="-0.6 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+  </a-entity>
+
+  <a-entity id="video-target" mindar-image-target="targetIndex: 1">
+    <a-video
+      id="ar-video"
+      src="#video1"
+      height="1.05"
+      width="1.5"
+      position="0 0 0"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-video>
+  </a-entity>
+</a-scene>
 </body>
 </html>
