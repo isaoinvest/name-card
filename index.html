@@ -2,272 +2,313 @@
 <html lang="zh-TW">
 <head>
 <title>Holographic AR Business Card</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<!-- 載入必要的庫 -->
+<!-- 載入AR庫 -->
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/mindar-image-aframe.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/gsap.min.js"></script>
 
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #000;
+}
+
+#ar-scene {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+/* 全息效果覆蓋層 */
+.hologram-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  mix-blend-mode: screen;
+}
+
+/* 掃描線效果 */
+.scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 255, 255, 0.02) 50%,
+    transparent 100%
+  );
+  background-size: 100% 5px;
+  animation: scanline 2s linear infinite;
+}
+
+@keyframes scanline {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 20px; }
+}
+
+/* 控制按鈕 */
+.control-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+}
+
+.holo-btn {
+  padding: 10px 20px;
+  background: rgba(0, 255, 255, 0.2);
+  border: 2px solid #00ffff;
+  color: #00ffff;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.holo-btn:hover {
+  background: rgba(0, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(0, 255, 255, 0.5);
+}
+
+/* 載入提示 */
+.loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #00ffff;
+  font-family: monospace;
+  font-size: 20px;
+  z-index: 1000;
+}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">Initializing AR...</div>
+
+<!-- 全息效果覆蓋層 -->
+<div class="hologram-overlay">
+  <div class="scanlines"></div>
+</div>
+
+<!-- AR場景 -->
+<a-scene
+  id="ar-scene"
+  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
+  color-space="sRGB"
+  renderer="colorManagement: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+  embedded
+>
+  <a-assets>
+    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" />
+    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" />
+    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" />
+    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" />
+    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" />
+    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" />
+    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" />
+    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" />
+    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
+    <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
+  </a-assets>
+
+  <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;" raycaster="near: 10; far: 10000; objects: .clickable"></a-camera>
+
+  <!-- 環境光源 -->
+  <a-light type="ambient" color="#001122" intensity="0.5"></a-light>
+  <a-light type="point" color="#00ffff" intensity="2" position="0 2 0"></a-light>
+
+  <!-- 第一個目標：名片 -->
+  <a-entity mindar-image-target="targetIndex: 0">
+    <!-- 背景光暈 -->
+    <a-plane
+      position="0 0 -2"
+      width="4"
+      height="3"
+      material="color: #00ffff; transparent: true; opacity: 0.1; emissive: #00ffff; emissiveIntensity: 0.5"
+    ></a-plane>
+    
+    <!-- 標題文字 -->
+    <a-text
+      value="Red Panda Keeper\nMingHsun Li"
+      color="#00ffff"
+      position="1.2 0.68 -1.5"
+      scale="2 2 2"
+      align="center"
+      font="kelsonsans"
+    ></a-text>
+    
+    <!-- 小浣熊模型 -->
+    <a-gltf-model
+      id="raccoon-model"
+      rotation="0 0 0"
+      position="-0.25 -0.15 0"
+      scale="0.09 0.09 0.09"
+      src="#raccoonModel"
+      animation-mixer
+      animation="property: rotation; to: 0 360 0; dur: 10000; loop: true; easing: linear"
+    ></a-gltf-model>
+    
+    <!-- 個人照片 -->
+    <a-image
+      src="#profile"
+      width="0.55"
+      height="0.55"
+      position="0.6 0.9 -1.5"
+      material="emissive: #00ffff; emissiveIntensity: 0.2"
+    ></a-image>
+    
+    <!-- 按鈕組 -->
+    <a-image
+      id="btn-website"
+      src="#website"
+      width="0.65"
+      height="0.25"
+      position="0.6 0.4 -1.5"
+      class="clickable"
+      material="emissive: #00ff88; emissiveIntensity: 0.3"
+    ></a-image>
+    
+    <a-image
+      id="btn-email"
+      src="#Email"
+      width="0.65"
+      height="0.25"
+      position="0.6 0.1 -1.5"
+      class="clickable"
+      material="emissive: #ff8800; emissiveIntensity: 0.3"
+    ></a-image>
+    
+    <a-image
+      id="btn-phone"
+      src="#phone"
+      width="0.65"
+      height="0.23"
+      position="0.6 -0.2 -1.5"
+      class="clickable"
+      material="emissive: #00ffff; emissiveIntensity: 0.3"
+    ></a-image>
+    
+    <!-- 社交媒體按鈕 -->
+    <a-image
+      id="btn-line"
+      src="#image-LINE"
+      width="0.3"
+      height="0.3"
+      position="0.6 -0.65 -1.5"
+      class="clickable"
+      material="emissive: #00ff00; emissiveIntensity: 0.4"
+    ></a-image>
+    
+    <a-image
+      id="btn-youtube"
+      src="#image-Youtube"
+      width="0.3"
+      height="0.3"
+      position="0.2 -0.65 -1.5"
+      class="clickable"
+      material="emissive: #ff0000; emissiveIntensity: 0.4"
+    ></a-image>
+    
+    <a-image
+      id="btn-ig"
+      src="#image-IG"
+      width="0.3"
+      height="0.3"
+      position="-0.2 -0.65 -1.5"
+      class="clickable"
+      material="emissive: #ff00ff; emissiveIntensity: 0.4"
+    ></a-image>
+    
+    <a-image
+      id="btn-fb"
+      src="#image-FB"
+      width="0.3"
+      height="0.3"
+      position="-0.6 -0.65 -1.5"
+      class="clickable"
+      material="emissive: #0088ff; emissiveIntensity: 0.4"
+    ></a-image>
+  </a-entity>
+
+  <!-- 第二個目標：視頻 -->
+  <a-entity id="video-target" mindar-image-target="targetIndex: 1">
+    <a-video
+      id="ar-video"
+      src="#video1"
+      height="1.05"
+      width="1.5"
+      position="0 0 0"
+      class="clickable"
+      material="emissive: #00ccff; emissiveIntensity: 0.3"
+    ></a-video>
+    
+    <!-- 視頻邊框 -->
+    <a-ring
+      radius-inner="0.8"
+      radius-outer="0.85"
+      position="0 0 -0.05"
+      material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 1"
+      animation="property: rotation; to: 0 0 360; dur: 20000; loop: true; easing: linear"
+    ></a-ring>
+  </a-entity>
+</a-scene>
+
+<!-- 控制面板 -->
+<div class="control-panel">
+  <button class="holo-btn" onclick="toggleEffect('scanlines')">SCANLINES</button>
+  <button class="holo-btn" onclick="toggleEffect('glow')">GLOW</button>
+  <button class="holo-btn" onclick="resetAR()">RESET</button>
+</div>
+
 <script>
-// 註冊全息影像材質組件
-AFRAME.registerComponent('holographic-material', {
-  schema: {
-    color: {type: 'color', default: '#00ffff'},
-    fresnelAmount: {type: 'number', default: 0.45},
-    hologramBrightness: {type: 'number', default: 0.8},
-    scanlineSize: {type: 'number', default: 8},
-    signalSpeed: {type: 'number', default: 0.45},
-    hologramOpacity: {type: 'number', default: 1.0},
-    enableBlinking: {type: 'boolean', default: true},
-    blinkFresnelOnly: {type: 'boolean', default: true},
-    enableAdditive: {type: 'boolean', default: true}
-  },
-  
-  init: function() {
-    const data = this.data;
-    const el = this.el;
-    
-    // 等待 A-Frame 的 THREE 載入完成
-    if (!window.THREE) {
-      setTimeout(() => this.init(), 100);
-      return;
-    }
-    
-    // 創建全息影像shader材質
-    const holographicShader = {
-      uniforms: {
-        time: { value: 0 },
-        color: { value: new window.THREE.Color(data.color) },
-        fresnelAmount: { value: data.fresnelAmount },
-        hologramBrightness: { value: data.hologramBrightness },
-        scanlineSize: { value: data.scanlineSize },
-        signalSpeed: { value: data.signalSpeed },
-        hologramOpacity: { value: data.hologramOpacity },
-        enableBlinking: { value: data.enableBlinking },
-        blinkFresnelOnly: { value: data.blinkFresnelOnly }
-      },
-      
-      vertexShader: `
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        varying vec2 vUv;
-        varying vec3 vViewPosition;
-        
-        uniform float time;
-        
-        void main() {
-          vUv = uv;
-          vPosition = position;
-          vNormal = normalize(normalMatrix * normal);
-          
-          // 添加輕微的頂點位移以創建故障效果
-          vec3 pos = position;
-          float glitchStrength = sin(time * 10.0 + position.y * 2.0) * 0.003;
-          pos.x += glitchStrength * sin(time * 50.0);
-          pos.z += glitchStrength * cos(time * 50.0);
-          
-          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-          vViewPosition = -mvPosition.xyz;
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      
-      fragmentShader: `
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        varying vec2 vUv;
-        varying vec3 vViewPosition;
-        
-        uniform float time;
-        uniform vec3 color;
-        uniform float fresnelAmount;
-        uniform float hologramBrightness;
-        uniform float scanlineSize;
-        uniform float signalSpeed;
-        uniform float hologramOpacity;
-        uniform bool enableBlinking;
-        uniform bool blinkFresnelOnly;
-        
-        void main() {
-          // 計算菲涅爾效果
-          vec3 viewDirection = normalize(vViewPosition);
-          float fresnel = 1.0 - abs(dot(viewDirection, vNormal));
-          fresnel = pow(fresnel, 2.0);
-          
-          // 創建掃描線效果
-          float scanline = sin((vPosition.y - time * signalSpeed) * scanlineSize) * 0.5 + 0.5;
-          scanline = smoothstep(0.0, 0.1, scanline) * smoothstep(0.9, 1.0, scanline);
-          
-          // 創建閃爍效果
-          float blinkValue = 1.0;
-          if (enableBlinking) {
-            blinkValue = sin(time * 15.0) * 0.5 + 0.5;
-            blinkValue = smoothstep(0.3, 0.7, blinkValue);
-          }
-          
-          // 創建條紋圖案
-          float stripes = sin(vPosition.y * 100.0 - time * 5.0) * 0.5 + 0.5;
-          stripes = pow(stripes, 3.0);
-          
-          // 組合所有效果
-          vec3 hologramColor = color;
-          float hologramAlpha = hologramOpacity;
-          
-          if (blinkFresnelOnly) {
-            hologramAlpha *= mix(1.0, fresnel * blinkValue, fresnelAmount);
-          } else {
-            hologramAlpha *= mix(1.0, fresnel, fresnelAmount) * blinkValue;
-          }
-          
-          hologramAlpha *= (scanline * 0.5 + 0.5);
-          hologramAlpha *= (stripes * 0.3 + 0.7);
-          
-          // 添加發光效果
-          hologramColor += vec3(fresnel * hologramBrightness);
-          
-          gl_FragColor = vec4(hologramColor, hologramAlpha);
-        }
-      `,
-      
-      transparent: true,
-      blending: data.enableAdditive ? window.THREE.AdditiveBlending : window.THREE.NormalBlending,
-      side: window.THREE.DoubleSide
-    };
-    
-    // 創建shader材質
-    this.material = new window.THREE.ShaderMaterial(holographicShader);
-    
-    // 等待mesh加載完成
-    el.addEventListener('loaded', () => {
-      const mesh = el.getObject3D('mesh');
-      if (mesh) {
-        mesh.material = this.material;
-      }
-    });
-  },
-  
-  tick: function(time) {
-    // 更新時間uniform
-    if (this.material && this.material.uniforms) {
-      this.material.uniforms.time.value = time * 0.001;
-    }
-  }
-});
-
-// 註冊全息掃描效果
-AFRAME.registerComponent('hologram-scan', {
-  init: function() {
-    const el = this.el;
-    
-    // 等待 THREE 載入
-    if (!window.THREE) {
-      setTimeout(() => this.init(), 100);
-      return;
-    }
-    
-    // 創建掃描線
-    const scanGeometry = new window.THREE.PlaneGeometry(3, 0.05);
-    const scanMaterial = new window.THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      transparent: true,
-      opacity: 0.5,
-      blending: window.THREE.AdditiveBlending
-    });
-    
-    this.scanLine = new window.THREE.Mesh(scanGeometry, scanMaterial);
-    el.object3D.add(this.scanLine);
-  },
-  
-  tick: function(time) {
-    // 掃描線動畫
-    if (this.scanLine) {
-      const t = time * 0.001;
-      this.scanLine.position.y = Math.sin(t) * 1.5;
-      this.scanLine.material.opacity = 0.5 + Math.sin(t * 3) * 0.3;
-    }
-  }
-});
-
 document.addEventListener("DOMContentLoaded", function() {
-  console.log('Holographic AR System initializing...');
+  console.log('AR System initializing...');
   
   const sceneEl = document.querySelector('a-scene');
-  let arSystem;
+  const loadingEl = document.getElementById('loading');
   
+  // 場景載入完成
   sceneEl.addEventListener('loaded', function () {
-    arSystem = sceneEl.systems["mindar-image-system"];
-    console.log("MindAR system loaded");
+    console.log("A-Frame loaded");
+    setTimeout(() => {
+      loadingEl.style.display = 'none';
+    }, 2000);
   });
 
+  // AR準備就緒
   sceneEl.addEventListener("arReady", (event) => {
-    console.log("MindAR is ready");
-    setupAllEventListeners();
-    initHolographicEffects();
+    console.log("AR is ready");
+    setupEventListeners();
   });
 
+  // AR錯誤處理
   sceneEl.addEventListener("arError", (event) => {
-    console.log("MindAR failed to start");
+    console.log("AR failed to start:", event);
+    loadingEl.textContent = "AR Error - Please refresh";
   });
 
-  function initHolographicEffects() {
-    // 添加環境光效果
-    const ambientLight = document.createElement('a-entity');
-    ambientLight.setAttribute('light', 'type: ambient; color: #001122; intensity: 0.5');
-    sceneEl.appendChild(ambientLight);
-    
-    // 添加點光源創建全息投影效果
-    const pointLight = document.createElement('a-entity');
-    pointLight.setAttribute('light', 'type: point; color: #00ffff; intensity: 2; distance: 10');
-    pointLight.setAttribute('position', '0 2 0');
-    sceneEl.appendChild(pointLight);
-    
-    // 為所有可交互元素添加全息效果
-    const interactiveElements = document.querySelectorAll('.clickable, #ar-video');
-    interactiveElements.forEach(element => {
-      // 添加發光邊框
-      element.setAttribute('material', 'shader: flat; color: #00ffff; opacity: 0.9');
-      
-      // 添加懸停時的全息掃描效果
-      element.addEventListener('mouseenter', () => {
-        gsap.to(element.object3D.scale, {
-          x: 1.1, y: 1.1, z: 1.1, 
-          duration: 0.3,
-          ease: "power2.out"
-        });
-        
-        // 添加顏色變化
-        if (element.getAttribute('material')) {
-          element.setAttribute('material', 'color', '#00ff00');
-        }
-      });
-      
-      element.addEventListener('mouseleave', () => {
-        gsap.to(element.object3D.scale, {
-          x: 1, y: 1, z: 1, 
-          duration: 0.3,
-          ease: "power2.out"
-        });
-        
-        // 恢復原始顏色
-        if (element.getAttribute('material')) {
-          element.setAttribute('material', 'color', '#00ffff');
-        }
-      });
-    });
-  }
-
-  function setupAllEventListeners() {
-    console.log("Setting up all event listeners");
-    
-    setupButtonClickEvents();
-    setupVideoEvents();
-    setupRaccoonAnimation();
-    setupHolographicHoverEffects();
-  }
-
-  function setupButtonClickEvents() {
+  function setupEventListeners() {
+    // 按鈕點擊事件
     const clickableButtons = [
       { id: 'btn-website', url: 'https://isaoinvest.com' },
       { id: 'btn-email', url: 'mailto:isaoinvest@gmail.com' },
@@ -281,680 +322,145 @@ document.addEventListener("DOMContentLoaded", function() {
     clickableButtons.forEach(button => {
       const element = document.querySelector('#' + button.id);
       if (element) {
-        console.log('Setting up holographic click for:', button.id);
-        
-        // 添加點擊時的全息閃爍效果
         element.addEventListener("click", event => {
-          console.log("Holographic button clicked:", button.id);
+          console.log("Button clicked:", button.id);
           event.stopPropagation();
-          event.preventDefault();
           
-          // 創建點擊波紋效果
-          const ripple = document.createElement('a-circle');
-          ripple.setAttribute('radius', '0.1');
-          ripple.setAttribute('material', 'color: #00ffff; transparent: true; opacity: 0.8');
-          ripple.setAttribute('position', element.getAttribute('position'));
-          
-          element.parentNode.appendChild(ripple);
-          
-          gsap.to(ripple.object3D.scale, {
-            x: 3, y: 3, z: 3,
-            duration: 0.6,
-            ease: "power2.out"
-          });
-          
-          gsap.to(ripple.components.material.material, {
-            opacity: 0,
-            duration: 0.6,
+          // 點擊動畫
+          gsap.to(element.object3D.scale, {
+            x: 1.2, y: 1.2, z: 1.2,
+            duration: 0.1,
+            yoyo: true,
+            repeat: 1,
             onComplete: () => {
-              ripple.parentNode.removeChild(ripple);
+              if (button.url.startsWith('mailto:') || button.url.startsWith('tel:')) {
+                window.location.href = button.url;
+              } else {
+                window.open(button.url, '_blank');
+              }
             }
           });
-          
-          try {
-            if (button.url.startsWith('mailto:') || button.url.startsWith('tel:')) {
-              window.location.href = button.url;
-            } else {
-              window.open(button.url, '_blank');
-            }
-          } catch (error) {
-            console.error('Error opening URL:', error);
-          }
+        });
+
+        // 懸停效果
+        element.addEventListener("mouseenter", () => {
+          gsap.to(element.object3D.scale, {
+            x: 1.1, y: 1.1, z: 1.1,
+            duration: 0.3
+          });
+        });
+
+        element.addEventListener("mouseleave", () => {
+          gsap.to(element.object3D.scale, {
+            x: 1, y: 1, z: 1,
+            duration: 0.3
+          });
         });
       }
     });
-  }
 
-  function setupVideoEvents() {
+    // 視頻控制
     const video = document.querySelector("#video1");
     const videoElement = document.querySelector("#ar-video");
     const videoTarget = document.querySelector("#video-target");
     let playing = false;
-    let hasInteracted = false;
 
     if (videoElement && video) {
-      console.log("Setting up holographic video events");
-      
-      // 為視頻添加全息材質
-      videoElement.setAttribute('holographic-material', 'color: #00ccff; hologramBrightness: 1.2');
-      
       videoElement.addEventListener("click", event => {
-        console.log("Holographic video clicked");
         event.stopPropagation();
-        event.preventDefault();
-        
-        if (!hasInteracted) {
-          video.muted = false;
-          hasInteracted = true;
-        }
         
         if (!playing) {
           video.play().then(() => {
             playing = true;
-            // 播放時添加脈衝效果
-            gsap.to(videoElement.object3D.scale, {
-              x: 1.05, y: 1.05, z: 1.05,
-              duration: 0.5,
-              yoyo: true,
-              repeat: -1,
-              ease: "sine.inOut"
-            });
+            console.log("Video playing");
           }).catch(error => {
-            console.error("Video play failed:", error);
+            console.error("Play failed:", error);
+            video.muted = true;
+            video.play().then(() => {
+              playing = true;
+            });
           });
         } else {
           video.pause();
           playing = false;
-          // 停止脈衝效果
-          gsap.killTweensOf(videoElement.object3D.scale);
-          gsap.set(videoElement.object3D.scale, {x: 1, y: 1, z: 1});
+          console.log("Video paused");
         }
       });
     }
 
-    if (videoTarget && video) {
+    if (videoTarget) {
       videoTarget.addEventListener("targetFound", event => {
-        console.log("Holographic video target found");
-        video.currentTime = 0;
-        
-        if (!hasInteracted) {
-          video.muted = true;
-          video.play().then(() => {
-            playing = true;
-          }).catch(error => {
-            console.error("Auto-play failed:", error);
-          });
-        }
+        console.log("Video target found");
+        video.muted = true;
+        video.play().catch(e => console.log("Auto-play blocked"));
       });
 
       videoTarget.addEventListener("targetLost", event => {
+        console.log("Video target lost");
         video.pause();
         playing = false;
       });
     }
   }
+});
 
-  function setupRaccoonAnimation() {
-    const raccoonModel = document.querySelector("#raccoon-model");
-    if (raccoonModel) {
-      console.log("Setting up holographic raccoon");
-      
-      // 為浣熊模型添加全息材質
-      raccoonModel.setAttribute('holographic-material', 'color: #ff00ff; scanlineSize: 12');
-      
-      raccoonModel.addEventListener("model-loaded", () => {
-        console.log("Holographic raccoon loaded");
-        
-        // 添加旋轉和浮動動畫
-        if (raccoonModel.object3D) {
-          // 持續旋轉
-          gsap.to(raccoonModel.object3D.rotation, {
-            y: Math.PI * 2,
-            duration: 10,
-            repeat: -1,
-            ease: "linear"
-          });
-          
-          // 上下浮動
-          gsap.to(raccoonModel.object3D.position, {
-            y: raccoonModel.object3D.position.y + 0.1,
-            duration: 2,
-            yoyo: true,
-            repeat: -1,
-            ease: "sine.inOut"
-          });
-          
-          // 添加全息掃描效果
-          raccoonModel.setAttribute('hologram-scan', '');
-        }
-      });
-    }
-  }
+// 效果控制
+let effects = {
+  scanlines: true,
+  glow: true
+};
 
-  function setupHolographicHoverEffects() {
-    const clickableElements = document.querySelectorAll(".clickable");
-    console.log("Setting up holographic hover effects for", clickableElements.length, "elements");
-    
-    clickableElements.forEach((element, index) => {
-      if (element.object3D) {
-        // 創建全息光環效果
-        const createHoloRing = () => {
-          const ring = document.createElement('a-ring');
-          ring.setAttribute('radius-inner', '0.4');
-          ring.setAttribute('radius-outer', '0.5');
-          ring.setAttribute('material', 'color: #00ffff; transparent: true; opacity: 0.5; side: double');
-          ring.setAttribute('position', element.getAttribute('position'));
-          ring.setAttribute('rotation', '0 0 0');
-          
-          element.parentNode.appendChild(ring);
-          
-          // 光環擴散動畫
-          gsap.to(ring.object3D.scale, {
-            x: 2, y: 2, z: 2,
-            duration: 1,
-            ease: "power2.out"
-          });
-          
-          gsap.to(ring.components.material.material, {
-            opacity: 0,
-            duration: 1,
-            onComplete: () => {
-              ring.parentNode.removeChild(ring);
-            }
-          });
-        };
-        
-        element.addEventListener("mouseenter", () => {
-          console.log('Holographic hover on', element.id);
-          
-          // 放大效果
-          gsap.to(element.object3D.scale, {
-            x: 1.2, y: 1.2, z: 1.2, 
-            duration: 0.3,
-            ease: "back.out(1.7)"
-          });
-          
-          // 創建光環
-          createHoloRing();
-        });
-        
-        element.addEventListener("mouseleave", () => {
-          console.log('Holographic hover off', element.id);
-          
-          gsap.to(element.object3D.scale, {
-            x: 1, y: 1, z: 1, 
-            duration: 0.3,
-            ease: "power2.inOut"
-          });
-        });
-        
-        // 觸摸設備支持
-        element.addEventListener("touchstart", (e) => {
-          createHoloRing();
-          gsap.to(element.object3D.scale, {
-            x: 1.2, y: 1.2, z: 1.2, 
-            duration: 0.3
-          });
-        });
-        
-        element.addEventListener("touchend", (e) => {
-          setTimeout(() => {
-            gsap.to(element.object3D.scale, {
-              x: 1, y: 1, z: 1, 
-              duration: 0.3
-            });
-          }, 100);
-        });
+function toggleEffect(effect) {
+  effects[effect] = !effects[effect];
+  
+  if (effect === 'scanlines') {
+    document.querySelector('.scanlines').style.display = 
+      effects.scanlines ? 'block' : 'none';
+  } else if (effect === 'glow') {
+    const elements = document.querySelectorAll('[material]');
+    elements.forEach(el => {
+      const material = el.getAttribute('material');
+      if (material && material.includes('emissive')) {
+        el.setAttribute('material', 'emissiveIntensity', 
+          effects.glow ? '0.3' : '0');
       }
     });
   }
-});
-
-console.log("Holographic AR Business Card system initialized");
-</script>
-
-<style>
-body {
-  margin: 0;
-  padding: 0;
-  background: #000011;
-  overflow: hidden;
-  font-family: 'Arial', sans-serif;
 }
 
-/* 全息投影濾鏡效果 */
-a-scene {
-  filter: contrast(1.1) brightness(1.2);
+function resetAR() {
+  window.location.reload();
 }
 
-/* 創建掃描線效果 */
-a-scene::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    transparent 0%, 
-    rgba(0, 255, 255, 0.03) 50%, 
-    transparent 100%
-  );
-  background-size: 100% 4px;
-  animation: scanlines 8s linear infinite;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* 添加噪點效果 */
-a-scene::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 255, 255, 0.03) 2px,
-      rgba(0, 255, 255, 0.03) 4px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 255, 255, 0.03) 2px,
-      rgba(0, 255, 255, 0.03) 4px
-    );
-  animation: flicker 0.3s infinite;
-  pointer-events: none;
-  z-index: 1;
-}
-
-@keyframes scanlines {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 0 10px;
-  }
-}
-
-@keyframes flicker {
-  0% {
-    opacity: 0.8;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.8;
-  }
-}
-
-/* 加載動畫 */
-.loading-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000011;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  transition: opacity 0.5s;
-}
-
-.loading-text {
-  color: #00ffff;
-  font-size: 24px;
-  text-transform: uppercase;
-  letter-spacing: 4px;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* 全息UI元素樣式 */
-.holo-ui {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 20px;
-  z-index: 100;
-}
-
-.holo-button {
-  padding: 10px 20px;
-  background: rgba(0, 255, 255, 0.1);
-  border: 2px solid #00ffff;
-  color: #00ffff;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  cursor: pointer;
-  transition: all 0.3s;
-  font-family: monospace;
-}
-
-.holo-button:hover {
-  background: rgba(0, 255, 255, 0.3);
-  box-shadow: 0 0 20px #00ffff;
-  transform: translateY(-2px);
-}
-</style>
-</head>
-<body>
-<!-- 加載畫面 -->
-<div class="loading-screen" id="loadingScreen">
-  <div class="loading-text">Initializing Hologram...</div>
-</div>
-
-<a-scene
-  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
-  color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights; alpha: true; antialias: true"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false"
-  embedded
->
-  <a-assets>
-    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" alt="Profile Photo" />
-    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" alt="Website Icon" />
-    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" alt="Email Icon" />
-    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" alt="Phone Icon" />
-    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" alt="LINE Icon" />
-    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" alt="YouTube Icon" />
-    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" alt="Instagram Icon" />
-    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" alt="Facebook Icon" />
-    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
-    <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
-  </a-assets>
-
-  <a-camera 
-    position="0 0 0" 
-    look-controls="enabled: false" 
-    cursor="fuse: false; rayOrigin: mouse;" 
-    raycaster="near: 10; far: 10000; objects: .clickable">
-  </a-camera>
-
-  <!-- 第一個目標：名片內容 -->
-  <a-entity mindar-image-target="targetIndex: 0">
-    <!-- 全息文字標題 -->
-    <a-text
-      value="Red Panda Keeper\nMingHsun Li"
-      color="#00ffff"
-      position="1.2 0.68 -1.5"
-      scale="2 2 2"
-      align="center"
-      font="kelsonsans"
-      holographic-material="color: #00ffff; scanlineSize: 20"
-    ></a-text>
-    
-    <!-- 全息浣熊模型 -->
-    <a-gltf-model
-      id="raccoon-model"
-      rotation="0 0 0"
-      position="-0.25 -0.15 0"
-      scale="0.09 0.09 0.09"
-      src="#raccoonModel"
-      animation-mixer
-    ></a-gltf-model>
-    
-    <!-- 全息個人照片 -->
-    <a-image
-      src="#profile"
-      width="0.55"
-      height="0.55"
-      position="0.6 0.9 -1.5"
-      rotation="0 0 0"
-      holographic-material="color: #00ffff"
-    ></a-image>
-    
-    <!-- 全息按鈕 - 網站 -->
-    <a-plane
-      id="btn-website"
-      width="0.65"
-      height="0.25"
-      position="0.6 0.4 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #00ff88; hologramBrightness: 1.2"
-    >
-      <a-image src="#website" width="0.6" height="0.2"></a-image>
-    </a-plane>
-    
-    <!-- 全息按鈕 - Email -->
-    <a-plane
-      id="btn-email"
-      width="0.65"
-      height="0.25"
-      position="0.6 0.1 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #ff8800; hologramBrightness: 1.2"
-    >
-      <a-image src="#Email" width="0.6" height="0.2"></a-image>
-    </a-plane>
-    
-    <!-- 全息按鈕 - 電話 -->
-    <a-plane
-      id="btn-phone"
-      width="0.65"
-      height="0.23"
-      position="0.6 -0.2 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #00ffff; hologramBrightness: 1.2"
-    >
-      <a-image src="#phone" width="0.6" height="0.2"></a-image>
-    </a-plane>
-    
-    <!-- 社交媒體全息按鈕組 -->
-    <a-plane
-      id="btn-line"
-      width="0.3"
-      height="0.3"
-      position="0.6 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #00ff00; hologramBrightness: 1.5"
-    >
-      <a-image src="#image-LINE" width="0.25" height="0.25"></a-image>
-    </a-plane>
-    
-    <a-plane
-      id="btn-youtube"
-      width="0.3"
-      height="0.3"
-      position="0.2 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #ff0000; hologramBrightness: 1.5"
-    >
-      <a-image src="#image-Youtube" width="0.25" height="0.25"></a-image>
-    </a-plane>
-    
-    <a-plane
-      id="btn-ig"
-      width="0.3"
-      height="0.3"
-      position="-0.2 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #ff00ff; hologramBrightness: 1.5"
-    >
-      <a-image src="#image-IG" width="0.25" height="0.25"></a-image>
-    </a-plane>
-    
-    <a-plane
-      id="btn-fb"
-      width="0.3"
-      height="0.3"
-      position="-0.6 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #0088ff; hologramBrightness: 1.5"
-    >
-      <a-image src="#image-FB" width="0.25" height="0.25"></a-image>
-    </a-plane>
-    
-    <!-- 添加全息粒子效果 -->
-    <a-entity id="particle-system" position="0 0 -1">
-      <a-entity
-        geometry="primitive: sphere; radius: 0.01"
-        material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2"
-        animation="property: position; to: 0 2 0; dur: 3000; loop: true; easing: linear"
-        animation__opacity="property: material.opacity; from: 1; to: 0; dur: 3000; loop: true"
-        animation__scale="property: scale; to: 0.5 0.5 0.5; dur: 3000; loop: true"
-      ></a-entity>
-    </a-entity>
-  </a-entity>
-
-  <!-- 第二個目標：視頻內容 -->
-  <a-entity id="video-target" mindar-image-target="targetIndex: 1">
-    <a-video
-      id="ar-video"
-      src="#video1"
-      height="1.05"
-      width="1.5"
-      position="0 0 0"
-      rotation="0 0 0"
-      class="clickable"
-      holographic-material="color: #00ccff; hologramBrightness: 1.5; scanlineSize: 10"
-    ></a-video>
-    
-    <!-- 視頻框架裝飾 -->
-    <a-ring
-      radius-inner="0.8"
-      radius-outer="0.85"
-      position="0 0 -0.1"
-      material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 1; transparent: true; opacity: 0.5"
-      animation="property: rotation; to: 0 0 360; dur: 20000; loop: true; easing: linear"
-    ></a-ring>
-  </a-entity>
-</a-scene>
-
-<!-- 全息UI控制面板 -->
-<div class="holo-ui">
-  <button class="holo-button" onclick="toggleScanlines()">SCANLINES</button>
-  <button class="holo-button" onclick="toggleGlitch()">GLITCH</button>
-  <button class="holo-button" onclick="toggleParticles()">PARTICLES</button>
-</div>
-
-<script>
-// 移除加載畫面
-window.addEventListener('load', function() {
-  setTimeout(() => {
-    const loadingScreen = document.getElementById('loadingScreen');
-    loadingScreen.style.opacity = '0';
-    setTimeout(() => {
-      loadingScreen.style.display = 'none';
-    }, 500);
-  }, 2000);
-});
-
-// UI控制函數
-let scanlinesEnabled = true;
-let glitchEnabled = true;
-let particlesEnabled = true;
-
-function toggleScanlines() {
-  scanlinesEnabled = !scanlinesEnabled;
+// 創建粒子效果
+function createParticle() {
   const scene = document.querySelector('a-scene');
-  if (scanlinesEnabled) {
-    scene.style.filter = 'contrast(1.1) brightness(1.2)';
-  } else {
-    scene.style.filter = 'none';
-  }
-}
-
-function toggleGlitch() {
-  glitchEnabled = !glitchEnabled;
-  const elements = document.querySelectorAll('[holographic-material]');
-  elements.forEach(el => {
-    const material = el.components['holographic-material'];
-    if (material && material.material) {
-      material.material.uniforms.enableBlinking.value = glitchEnabled;
+  const particle = document.createElement('a-sphere');
+  
+  particle.setAttribute('radius', '0.01');
+  particle.setAttribute('material', 'color: #00ffff; emissive: #00ffff; emissiveIntensity: 2');
+  particle.setAttribute('position', `${(Math.random() - 0.5) * 3} ${Math.random() * 2 - 1} ${-2 + Math.random()}`);
+  
+  scene.appendChild(particle);
+  
+  gsap.to(particle.object3D.position, {
+    y: particle.object3D.position.y + 2,
+    duration: 4,
+    ease: "none",
+    onComplete: () => {
+      scene.removeChild(particle);
     }
+  });
+  
+  gsap.to(particle.getAttribute('material'), {
+    opacity: 0,
+    duration: 4
   });
 }
 
-function toggleParticles() {
-  particlesEnabled = !particlesEnabled;
-  const particleSystem = document.getElementById('particle-system');
-  particleSystem.setAttribute('visible', particlesEnabled);
-}
-
-// 創建額外的粒子效果
-function createParticleEffect() {
-  const scene = document.querySelector('a-scene');
-  const numParticles = 20;
-  
-  for (let i = 0; i < numParticles; i++) {
-    setTimeout(() => {
-      const particle = document.createElement('a-sphere');
-      particle.setAttribute('radius', '0.005');
-      particle.setAttribute('material', 'color: #00ffff; emissive: #00ffff; emissiveIntensity: 3; transparent: true');
-      particle.setAttribute('position', `${Math.random() * 2 - 1} ${Math.random() * 2 - 1} ${Math.random() * 2 - 3}`);
-      
-      scene.appendChild(particle);
-      
-      // 粒子動畫
-      gsap.to(particle.object3D.position, {
-        y: particle.object3D.position.y + 2,
-        duration: 3 + Math.random() * 2,
-        ease: "none",
-        onComplete: () => {
-          particle.parentNode.removeChild(particle);
-        }
-      });
-      
-      gsap.to(particle.components.material.material, {
-        opacity: 0,
-        duration: 3,
-        ease: "power2.in"
-      });
-    }, i * 200);
-  }
-}
-
-// 每隔一段時間創建粒子效果
-setInterval(() => {
-  if (particlesEnabled) {
-    createParticleEffect();
-  }
-}, 5000);
-
-// 添加鍵盤快捷鍵
-document.addEventListener('keydown', (e) => {
-  switch(e.key.toLowerCase()) {
-    case 's':
-      toggleScanlines();
-      break;
-    case 'g':
-      toggleGlitch();
-      break;
-    case 'p':
-      toggleParticles();
-      break;
-  }
-});
-
-console.log('Holographic AR system fully loaded');
+// 定期創建粒子
+setInterval(createParticle, 500);
 </script>
+
 </body>
 </html>
