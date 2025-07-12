@@ -223,6 +223,12 @@ body {
   padding: 0;
   background-color: #000;
   overflow: hidden;
+  -webkit-user-select: none; /* For Safari */
+  user-select: none;
+}
+.clickable {
+  cursor: -webkit-grab;
+  cursor: grab;
 }
 </style>
 </head>
@@ -252,7 +258,7 @@ body {
     position="0 0 0" 
     look-controls="enabled: false" 
     cursor="fuse: false; rayOrigin: mouse;" 
-    raycaster="near: 10; far: 10000; objects: .clickable">
+      raycaster="near: 10; far: 10000; objects: .clickable">
   </a-camera>
 
   <a-entity mindar-image-target="targetIndex: 0">
