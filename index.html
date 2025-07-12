@@ -9,7 +9,6 @@
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/mindar-image-aframe.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
 // 註冊全息影像材質組件
@@ -30,11 +29,17 @@ AFRAME.registerComponent('holographic-material', {
     const data = this.data;
     const el = this.el;
     
+    // 等待 A-Frame 的 THREE 載入完成
+    if (!window.THREE) {
+      setTimeout(() => this.init(), 100);
+      return;
+    }
+    
     // 創建全息影像shader材質
     const holographicShader = {
       uniforms: {
         time: { value: 0 },
-        color: { value: new THREE.Color(data.color) },
+        color: { value: new window.THREE.Color(data.color) },
         fresnelAmount: { value: data.fresnelAmount },
         hologramBrightness: { value: data.hologramBrightness },
         scanlineSize: { value: data.scanlineSize },
@@ -127,12 +132,12 @@ AFRAME.registerComponent('holographic-material', {
       `,
       
       transparent: true,
-      blending: data.enableAdditive ? THREE.AdditiveBlending : THREE.NormalBlending,
-      side: THREE.DoubleSide
+      blending: data.enableAdditive ? window.THREE.AdditiveBlending : window.THREE.NormalBlending,
+      side: window.THREE.DoubleSide
     };
     
     // 創建shader材質
-    this.material = new THREE.ShaderMaterial(holographicShader);
+    this.material = new window.THREE.ShaderMaterial(holographicShader);
     
     // 等待mesh加載完成
     el.addEventListener('loaded', () => {
@@ -156,24 +161,32 @@ AFRAME.registerComponent('hologram-scan', {
   init: function() {
     const el = this.el;
     
+    // 等待 THREE 載入
+    if (!window.THREE) {
+      setTimeout(() => this.init(), 100);
+      return;
+    }
+    
     // 創建掃描線
-    const scanGeometry = new THREE.PlaneGeometry(3, 0.05);
-    const scanMaterial = new THREE.MeshBasicMaterial({
+    const scanGeometry = new window.THREE.PlaneGeometry(3, 0.05);
+    const scanMaterial = new window.THREE.MeshBasicMaterial({
       color: 0x00ffff,
       transparent: true,
       opacity: 0.5,
-      blending: THREE.AdditiveBlending
+      blending: window.THREE.AdditiveBlending
     });
     
-    this.scanLine = new THREE.Mesh(scanGeometry, scanMaterial);
+    this.scanLine = new window.THREE.Mesh(scanGeometry, scanMaterial);
     el.object3D.add(this.scanLine);
   },
   
   tick: function(time) {
     // 掃描線動畫
-    const t = time * 0.001;
-    this.scanLine.position.y = Math.sin(t) * 1.5;
-    this.scanLine.material.opacity = 0.5 + Math.sin(t * 3) * 0.3;
+    if (this.scanLine) {
+      const t = time * 0.001;
+      this.scanLine.position.y = Math.sin(t) * 1.5;
+      this.scanLine.material.opacity = 0.5 + Math.sin(t * 3) * 0.3;
+    }
   }
 });
 
@@ -659,14 +672,14 @@ a-scene::after {
   embedded
 >
   <a-assets>
-    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" />
-    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" />
-    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" />
-    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" />
-    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" />
-    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" />
-    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" />
-    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" />
+    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" alt="Profile Photo" />
+    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" alt="Website Icon" />
+    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" alt="Email Icon" />
+    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" alt="Phone Icon" />
+    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" alt="LINE Icon" />
+    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" alt="YouTube Icon" />
+    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" alt="Instagram Icon" />
+    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" alt="Facebook Icon" />
     <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
     <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
   </a-assets>
