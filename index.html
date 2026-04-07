@@ -5,40 +5,54 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <title>AR 名片 · MingHsun Li</title>
+  <title>AR 名片 · 一畫千言</title>
 
-  <!-- ★★★  CONFIG  ★★★ -->
+  <!--
+  ═══════════════════════════════════════════════════════════════
+  ★★★  IMAGE TARGET 遷移說明  ★★★
+
+  原始 MindAR (.mind) 格式 → 需要重新用 XR8 CLI 產生 .json
+
+  步驟：
+  1. npm install -g @8thwall/image-target-cli
+  2. 把兩張「參考圖片」準備好（名片圖、影片封面圖）
+  3. xr8-image-target compile card-image.png   → image-targets/card.json
+     xr8-image-target compile video-image.png  → image-targets/video.json
+  4. 把兩個 .json 放到 ./image-targets/ 資料夾
+
+  XR8 目標格式和 MindAR 完全不相容，必須重新 compile。
+  ═══════════════════════════════════════════════════════════════
+  -->
+
+  <!-- ★★★  在此設定所有資訊  ★★★ -->
   <script>
   const AR_CONFIG = {
-    // ── 圖像目標 ─────────────────────────────────────────
-    // ★ FIX：直接用 .name 欄位比對，不再依賴 array index
-    //   （index 在 filter(Boolean) 後會位移，導致 isaoback 被誤認為 card target）
-    cardTargetName:  'isaofront',                         // isaofront.json 的 .name 欄位
-    videoTargetName: 'isaoback',                          // isaoback.json  的 .name 欄位
-    cardTargetJson:  './image-targets/isaofront.json',
-    videoTargetJson: './image-targets/isaoback.json',
+
+    // ── 圖像目標（對應上方說明產生的 .json）────────────────
+    cardTargetJson:  './image-targets/isaofront.json',   // target 0：掃名片
+    videoTargetJson: './image-targets/isaoback.json',  // target 1：掃影片目標
 
     // ── 影片來源 ─────────────────────────────────────────
     videoSrc: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
 
-    // ── 3D 浣熊模型 ──────────────────────────────────────
+    // ── 3D 浣熊模型（保留原始來源）──────────────────────
     raccoonSrc: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf',
 
-    // ── 個人資料（顯示在 3D 空間中）──────────────────────
+    // ── 個人資料 ──────────────────────────────────────────
     profile: {
       photo:  'https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png',
       name:   'MingHsun Li',
       title:  'Red Panda Keeper',
     },
 
-    // ── 聯絡按鈕（3D 可點擊平面）────────────────────────
+    // ── 聯絡按鈕（依序排列）──────────────────────────────
     contacts: [
-      { label:'Website',   icon:'🌐', color:'#00aaff', url:'https://isaoinvest.com' },
-      { label:'Email',     icon:'✉',  color:'#00cc88', url:'mailto:isaoinvest@gmail.com' },
-      { label:'Phone',     icon:'☎',  color:'#ff8800', url:'tel:+886920820259' },
+      { label:'Website',   icon:'🌐', color:'#0af',    url:'https://isaoinvest.com' },
+      { label:'Email',     icon:'✉️',  color:'#0c8',    url:'mailto:isaoinvest@gmail.com' },
+      { label:'Phone',     icon:'📞', color:'#f80',    url:'tel:+886920820259' },
     ],
 
-    // ── 社群按鈕（3D 可點擊圖示）────────────────────────
+    // ── 社群按鈕 ──────────────────────────────────────────
     socials: [
       { label:'LINE',      img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png',
                            url:'https://line.me/R/ti/p/@722fdkca' },
@@ -52,38 +66,59 @@
   };
   </script>
 
+  <!-- Three.js（必須在 xr.js 之前）-->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- GLTFLoader（非 module 版，載入 raccoon 用）-->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+  <!-- 8th Wall 開源輔助模組：載入、錯誤、全螢幕畫布 -->
+  <script src="./external/xrextras/xrextras.js"></script>
+  <script src="./external/landing-page/landing-page.js"></script>
+  <!--
+    ★ data-preload-chunks="slam" 必須保留！
+    xr-slam.js 包含相機畫面 pipeline（frame decoder）。
+    即使 disableWorldTracking:true，移除此屬性 → 黑屏。
+  -->
   <script src="./external/xr/xr.js" data-preload-chunks="slam"></script>
 
   <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;
-    -webkit-user-select:none;user-select:none}
+    -webkit-user-select:none;user-select:none;}
   #renderCanvas{position:fixed!important;top:0!important;left:0!important;
     width:100vw!important;height:100vh!important;z-index:0;display:block}
-  /* ★ visibility:hidden 非 display:none — 防止 iOS 停止 XR8 內部相機 video 解碼 */
-  [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{
-    visibility:hidden!important;pointer-events:none!important}
+
+  /*
+   * ★ xr8 元素用 visibility:hidden（非 display:none）
+   * iOS Safari 對 display:none 的 <video> 停止解碼 → 黑屏
+   * visibility:hidden 讓元素繼續運作但視覺隱藏
+   */
+  [class*="xr8"],[id*="xr8"],
+  [class*="poweredby"],[id*="powered"]{visibility:hidden!important;pointer-events:none!important}
   [class*="watermark"],[id*="watermark"]{display:none!important}
 
-  @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.25}}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
-  @keyframes scan{0%{transform:translateY(0)}50%{transform:translateY(216px)}100%{transform:translateY(0)}}
-  @keyframes pgscan{0%{transform:translateY(0)}50%{transform:translateY(157px)}100%{transform:translateY(0)}}
+  /* ══ 動畫 ══════════════════════════════════════════════ */
+  @keyframes fadeIn  {from{opacity:0}to{opacity:1}}
+  @keyframes slideUp {from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse   {0%,100%{opacity:.9}50%{opacity:.3}}
+  @keyframes blink   {0%,100%{opacity:1}50%{opacity:.15}}
+  @keyframes scan    {0%{transform:translateY(0)}50%{transform:translateY(220px)}100%{transform:translateY(0)}}
+  @keyframes spin    {from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  @keyframes pgscan  {0%{transform:translateY(0)}50%{transform:translateY(158px)}100%{transform:translateY(0)}}
 
-  /* Scanning overlay */
+  /* ══ Scanning Overlay ═══════════════════════════════════ */
   #scan-ov{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;
     pointer-events:none;opacity:1;transition:opacity .5s}
   #scan-ov.hidden{opacity:0}
-  .sbox{width:218px;height:218px;position:relative;border:1.5px solid rgba(0,210,255,.35);
-    border-radius:12px;box-shadow:0 0 28px rgba(0,210,255,.12)}
+  .sbox{width:220px;height:220px;position:relative;
+    border:1.5px solid rgba(0,210,255,.35);border-radius:12px;
+    box-shadow:0 0 28px rgba(0,210,255,.12)}
   .sline{position:absolute;height:2px;width:100%;top:0;
     background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);
     animation:scan 2s ease-in-out infinite;box-shadow:0 0 10px rgba(0,238,255,.75)}
-  .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.9);
-    border-style:solid;border-width:0}
+  .corn{position:absolute;width:20px;height:20px;
+    border-color:rgba(0,238,255,.9);border-style:solid;border-width:0}
   .c-tl{top:-2px;left:-2px;border-top-width:2.5px;border-left-width:2.5px;border-radius:4px 0 0 0}
   .c-tr{top:-2px;right:-2px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 4px 0 0}
   .c-bl{bottom:-2px;left:-2px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 4px}
@@ -91,59 +126,153 @@
   #scan-label{font-family:monospace;font-size:11px;letter-spacing:2.5px;
     color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
 
-  /* Status */
-  #status{position:fixed;top:16px;left:50%;transform:translateX(-50%);padding:7px 18px;
-    background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);border-radius:20px;
+  /* ══ Status Bar ════════════════════════════════════════ */
+  #status{position:fixed;top:16px;left:50%;transform:translateX(-50%);
+    padding:7px 18px;background:rgba(0,6,22,.9);
+    border:1px solid rgba(0,175,255,.4);border-radius:20px;
     backdrop-filter:blur(10px);font-family:monospace;font-size:11px;
     color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;
     white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis}
   #status.show{opacity:1}
 
-  /* Flash */
-  #flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;
-    opacity:0;transition:opacity .7s;
+  /* ══ Flash ══════════════════════════════════════════════ */
+  #flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;
+    pointer-events:none;opacity:0;transition:opacity .7s;
     background:radial-gradient(circle,rgba(0,210,255,.14),transparent 68%)}
   #flash.on{opacity:1}
 
-  /* 影片控制面板 (影片 target 用 DOM，簡單可靠) */
-  #video-panel{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);
-    z-index:60;opacity:0;transition:opacity .4s,transform .4s;pointer-events:none;white-space:nowrap}
+  /* ══ 名片資訊面板 ══════════════════════════════════════ */
+  #card-panel{
+    position:fixed;bottom:0;left:0;right:0;z-index:60;
+    opacity:0;transform:translateY(100%);
+    transition:opacity .45s,transform .45s cubic-bezier(.32,1,.3,1);
+    pointer-events:none;
+  }
+  #card-panel.show{opacity:1;transform:translateY(0);pointer-events:auto}
+
+  .cp-card{
+    margin:0 8px 8px;
+    background:linear-gradient(160deg,rgba(2,12,36,.98),rgba(0,4,18,.99));
+    border:1.5px solid rgba(0,185,255,.45);border-radius:22px;
+    padding:18px 18px 16px;
+    backdrop-filter:blur(20px);
+    box-shadow:0 -8px 40px rgba(0,120,255,.18),inset 0 1px 0 rgba(0,210,255,.1);
+    position:relative;overflow:hidden;
+  }
+  .cp-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,rgba(0,200,255,.7) 40%,rgba(0,200,255,.7) 60%,transparent)
+  }
+  /* 掃描線效果 */
+  .cp-card::after{
+    content:'';position:absolute;left:0;right:0;height:60px;
+    background:linear-gradient(180deg,transparent,rgba(0,140,255,.04),transparent);
+    animation:hscan 4s ease-in-out infinite;pointer-events:none;top:0;
+  }
+  @keyframes hscan{0%{top:0}100%{top:100%}}
+
+  /* 頂部工具列 */
+  .cp-topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:14px;font-family:monospace;font-size:9px;
+    letter-spacing:2px;color:rgba(0,155,255,.5)
+  }
+  .cp-dot{display:inline-block;width:5px;height:5px;background:rgba(0,200,255,.7);
+    border-radius:50%;margin-right:5px;animation:blink 2s infinite}
+  #cp-close{
+    width:28px;height:28px;background:rgba(0,40,100,.4);
+    border:1px solid rgba(0,160,255,.3);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;color:rgba(0,180,255,.7);font-size:14px;
+    -webkit-tap-highlight-color:transparent;flex-shrink:0;
+  }
+
+  /* 個人資料區 */
+  .cp-profile{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+  .cp-photo{
+    width:58px;height:58px;border-radius:50%;
+    border:2px solid rgba(0,190,255,.5);
+    box-shadow:0 0 16px rgba(0,160,255,.25);
+    object-fit:cover;flex-shrink:0;
+  }
+  .cp-name{font-size:20px;font-weight:700;color:rgba(230,248,255,1);
+    letter-spacing:.5px;text-shadow:0 0 14px rgba(0,200,255,.5)}
+  .cp-title{font-family:monospace;font-size:10px;letter-spacing:2px;
+    color:rgba(0,160,255,.6);margin-top:3px}
+
+  /* 分隔線 */
+  .cp-div{height:1px;margin:10px 0;
+    background:linear-gradient(90deg,transparent,rgba(0,185,255,.28) 30%,rgba(0,185,255,.28) 70%,transparent)}
+
+  /* 聯絡按鈕 */
+  .cp-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+  .cp-btn{
+    display:flex;align-items:center;gap:11px;
+    padding:11px 14px;
+    background:rgba(0,30,70,.5);
+    border:1px solid rgba(0,160,255,.25);border-radius:12px;
+    color:rgba(210,240,255,.9);font-size:14px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:background .15s,border-color .15s;
+    text-decoration:none;
+  }
+  .cp-btn:active{background:rgba(0,80,180,.4);border-color:rgba(0,220,255,.6)}
+  .cp-btn-icon{font-size:18px;flex-shrink:0}
+  .cp-btn-label{font-size:13px;letter-spacing:.5px}
+
+  /* 社群圖示列 */
+  .cp-social-row{display:flex;gap:10px;justify-content:center}
+  .cp-soc{
+    width:52px;height:52px;border-radius:14px;overflow:hidden;
+    border:1px solid rgba(0,150,255,.2);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:transform .15s,box-shadow .15s;flex-shrink:0;
+  }
+  .cp-soc:active{transform:scale(.93);box-shadow:0 0 12px rgba(0,200,255,.3)}
+  .cp-soc img{width:100%;height:100%;object-fit:cover;display:block}
+
+  /* ══ 影片面板 ════════════════════════════════════════════ */
+  #video-panel{
+    position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(20px);
+    z-index:60;opacity:0;transition:opacity .4s,transform .4s;
+    pointer-events:none;white-space:nowrap;
+  }
   #video-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
-  .vp-hint{display:flex;align-items:center;gap:10px;padding:10px 22px;
-    background:rgba(0,6,22,.88);border:1px solid rgba(0,175,255,.35);border-radius:50px;
-    backdrop-filter:blur(14px);font-family:monospace;font-size:11px;
-    letter-spacing:1.5px;color:rgba(0,200,255,.85)}
-  #vp-icon{font-size:18px}
+  .vp-hint{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 20px;
+    background:rgba(0,6,22,.88);
+    border:1px solid rgba(0,175,255,.35);border-radius:50px;
+    backdrop-filter:blur(14px);font-family:monospace;
+    font-size:11px;letter-spacing:1.5px;color:rgba(0,200,255,.85);
+  }
+  #vp-icon{font-size:18px;transition:transform .15s}
   #vp-play-btn{cursor:pointer;-webkit-tap-highlight-color:transparent}
   #vp-play-btn:active .vp-hint{background:rgba(0,50,130,.5)}
 
-  /* Toast (3D 按鈕點擊回饋) */
-  #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    padding:10px 22px;background:rgba(0,40,100,.92);border:1px solid rgba(0,200,255,.5);
-    border-radius:30px;font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);
-    z-index:200;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
-  #toast.show{opacity:1}
-
-  /* Debug */
+  /* ══ Debug ══════════════════════════════════════════════ */
   #dbg{position:fixed;bottom:90px;left:8px;right:8px;max-height:140px;overflow-y:auto;
     background:rgba(0,0,0,.94);border:1px solid rgba(255,70,70,.3);border-radius:10px;
     padding:8px;font-family:monospace;font-size:10px;z-index:300;display:none}
   #dbg.show{display:block}
   #dbg .ok{color:#88ff88}#dbg .err{color:#ff6666}#dbg .inf{color:#88ccff}
-  #bdbg{position:fixed;bottom:16px;right:16px;z-index:400;width:40px;height:40px;
-    background:rgba(0,8,24,.8);border:1px solid rgba(255,140,0,.3);border-radius:50%;
-    display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;
-    -webkit-tap-highlight-color:transparent}
+  #bdbg{position:fixed;bottom:16px;right:16px;z-index:400;
+    width:40px;height:40px;background:rgba(0,8,24,.8);
+    border:1px solid rgba(255,140,0,.3);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;-webkit-tap-highlight-color:transparent}
 
-  /* Permission Gate */
-  #perm-gate{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;
-    background:linear-gradient(180deg,#000,#020818);
+  /* ══ Permission Gate ═══════════════════════════════════ */
+  #perm-gate{
+    position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;
+    background:linear-gradient(180deg,#000 0%,#020818 100%);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:24px;transition:opacity .7s}
+    gap:24px;transition:opacity .7s;
+  }
   #perm-gate.fade{opacity:0;pointer-events:none}
   .pg-logo{font-family:monospace;font-size:10px;letter-spacing:3.5px;
     color:rgba(0,175,255,.45);text-align:center}
-  .pg-scan{width:158px;height:158px;position:relative;
+  .pg-scan{width:160px;height:160px;position:relative;
     border:1px solid rgba(0,200,255,.18);border-radius:12px}
   .pg-scan::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
     background:linear-gradient(90deg,transparent,rgba(0,220,255,.55),transparent);
@@ -156,16 +285,22 @@
   .pgc-br{bottom:-1px;right:-1px;border-bottom-width:2px;border-right-width:2px}
   .pg-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
   .pg-icon{font-size:34px;margin-bottom:4px}
-  .pg-ct{font-family:monospace;font-size:9px;letter-spacing:2px;
+  .pg-center-txt{font-family:monospace;font-size:9px;letter-spacing:2px;
     color:rgba(0,200,255,.45);animation:pulse 2s infinite}
   .pg-title{font-size:22px;font-weight:700;color:#fff;text-align:center;
-    text-shadow:0 0 28px rgba(0,175,255,.4)}
+    letter-spacing:.5px;text-shadow:0 0 28px rgba(0,175,255,.4)}
   .pg-sub{font-size:12px;color:rgba(200,230,255,.5);text-align:center;
     line-height:1.8;max-width:250px}
-  #btn-start{padding:15px 46px;background:transparent;
+  #btn-start{
+    padding:15px 46px;background:transparent;
     border:1.5px solid rgba(0,200,255,.65);border-radius:50px;
     color:rgba(0,218,255,.95);font-size:15px;font-family:monospace;
-    letter-spacing:2.5px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    letter-spacing:2.5px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    position:relative;overflow:hidden;
+  }
+  #btn-start::before{content:'';position:absolute;inset:0;
+    background:rgba(0,170,255,.08);opacity:0;transition:opacity .2s}
+  #btn-start:active::before{opacity:1}
   #btn-start:disabled{opacity:.4;cursor:wait}
   .pg-note{font-size:10px;color:rgba(140,175,210,.28);text-align:center;
     max-width:230px;line-height:1.7;font-family:monospace}
@@ -173,7 +308,7 @@
 </head>
 <body>
 
-  <!-- Permission Gate -->
+  <!-- Permission Gate ─────────────────────────────────── -->
   <div id="perm-gate">
     <div class="pg-logo">AR BUSINESS CARD</div>
     <div class="pg-scan">
@@ -181,19 +316,20 @@
       <div class="pgcorn pgc-bl"></div><div class="pgcorn pgc-br"></div>
       <div class="pg-center">
         <div class="pg-icon">🦝</div>
-        <div class="pg-ct">SCAN TO MEET ME</div>
+        <div class="pg-center-txt">SCAN TO MEET ME</div>
       </div>
     </div>
     <div class="pg-title">AR 名片體驗</div>
-    <div class="pg-sub">掃描名片正面遇見 3D 小浣熊<br>掃描背面觀看精彩影片</div>
+    <div class="pg-sub">掃描名片，遇見 3D 小浣熊<br>並取得完整聯絡資訊</div>
     <button id="btn-start">▶ 開始體驗</button>
     <div class="pg-note">點擊後請允許相機權限<br>以啟動 AR 功能</div>
   </div>
 
+  <!-- AR Canvas ──────────────────────────────────────── -->
   <canvas id="renderCanvas"></canvas>
   <div id="flash"></div>
 
-  <!-- Scanning UI -->
+  <!-- Scanning UI ────────────────────────────────────── -->
   <div id="scan-ov">
     <div class="sbox">
       <div class="sline"></div>
@@ -203,10 +339,31 @@
     <div id="scan-label">AR READY<br>對準名片正面或背面</div>
   </div>
 
+  <!-- Status ─────────────────────────────────────────── -->
   <div id="status"></div>
-  <div id="toast"></div>
 
-  <!-- 影片控制面板（背面 target 用 DOM）-->
+  <!-- 名片資訊面板（名片 target 找到時顯示）───────────── -->
+  <div id="card-panel">
+    <div class="cp-card">
+      <div class="cp-topbar">
+        <span><span class="cp-dot"></span>AR CONTACT</span>
+        <div id="cp-close">✕</div>
+      </div>
+      <div class="cp-profile">
+        <img class="cp-photo" id="cp-photo" src="" alt="profile" crossorigin="anonymous"/>
+        <div>
+          <div class="cp-name"  id="cp-name"></div>
+          <div class="cp-title" id="cp-title"></div>
+        </div>
+      </div>
+      <div class="cp-div"></div>
+      <div class="cp-actions" id="cp-actions"><!-- 動態生成 --></div>
+      <div class="cp-div"></div>
+      <div class="cp-social-row" id="cp-socials"><!-- 動態生成 --></div>
+    </div>
+  </div>
+
+  <!-- 影片控制面板（影片 target 找到時顯示）──────────── -->
   <div id="video-panel">
     <div id="vp-play-btn">
       <div class="vp-hint">
@@ -216,16 +373,18 @@
     </div>
   </div>
 
+  <!-- Debug ──────────────────────────────────────────── -->
   <div id="dbg"></div>
   <div id="bdbg">🔍</div>
 
   <script>
-  // ═══ DEBUG ════════════════════════════════════════════
+  // ═══ DEBUG ═══════════════════════════════════════════
   const D = {
     el: null,
     init() {
       this.el = document.getElementById('dbg');
-      document.getElementById('bdbg').addEventListener('click', () => this.el.classList.toggle('show'));
+      const b = document.getElementById('bdbg');
+      b.addEventListener('click', () => this.el.classList.toggle('show'));
       window.addEventListener('error', e => this.log(e.message + ' L' + e.lineno, 'err'));
     },
     log(m, t='inf') {
@@ -239,457 +398,566 @@
   };
   D.init();
 
-  // ═══ UI HELPERS ═══════════════════════════════════════
-  let _stT, _toastT;
+  // ═══ STATUS ══════════════════════════════════════════
+  let _stTimer;
   function showSt(msg, dur=2800) {
     const e = document.getElementById('status');
     e.textContent = msg; e.classList.add('show');
-    clearTimeout(_stT); _stT = setTimeout(() => e.classList.remove('show'), dur);
-  }
-  function showToast(msg) {
-    const e = document.getElementById('toast');
-    e.textContent = msg; e.classList.add('show');
-    clearTimeout(_toastT); _toastT = setTimeout(() => e.classList.remove('show'), 1400);
+    clearTimeout(_stTimer);
+    _stTimer = setTimeout(() => e.classList.remove('show'), dur);
   }
   function doFlash() {
     const f = document.getElementById('flash');
-    f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 800);
+    f.classList.add('on');
+    setTimeout(() => f.classList.remove('on'), 800);
   }
 
-  // ═══ PREFLIGHT ════════════════════════════════════════
+  // ═══ 動態建立 DOM 面板內容 ════════════════════════
+  (function buildPanel() {
+    const { profile, contacts, socials } = AR_CONFIG;
+
+    // 個人資料
+    document.getElementById('cp-photo').src  = profile.photo;
+    document.getElementById('cp-name').textContent  = profile.name;
+    document.getElementById('cp-title').textContent = profile.title;
+
+    // 聯絡按鈕
+    const actEl = document.getElementById('cp-actions');
+    contacts.forEach(c => {
+      const a = document.createElement('a');
+      a.className  = 'cp-btn';
+      a.href       = c.url;
+      a.target     = c.url.startsWith('http') ? '_blank' : '_self';
+      a.rel        = 'noopener noreferrer';
+      a.innerHTML  = `<span class="cp-btn-icon">${c.icon}</span>
+                      <span class="cp-btn-label">${c.label}</span>`;
+      a.style.borderLeftColor = c.color;
+      a.style.borderLeftWidth = '3px';
+      a.addEventListener('click', e => {
+        e.stopPropagation();
+        D.log('點擊: ' + c.label, 'ok');
+        if (!c.url.startsWith('http')) {
+          e.preventDefault();
+          window.location.href = c.url;
+        }
+      });
+      actEl.appendChild(a);
+    });
+
+    // 社群圖示
+    const socEl = document.getElementById('cp-socials');
+    socials.forEach(s => {
+      const d = document.createElement('div');
+      d.className = 'cp-soc';
+      d.title     = s.label;
+      const img   = document.createElement('img');
+      img.src     = s.img;
+      img.alt     = s.label;
+      img.crossOrigin = 'anonymous';
+      d.appendChild(img);
+      d.addEventListener('click', e => {
+        e.stopPropagation();
+        D.log('社群: ' + s.label, 'ok');
+        window.open(s.url, '_blank', 'noopener');
+      });
+      socEl.appendChild(d);
+    });
+  })();
+
+  // 關閉按鈕
+  document.getElementById('cp-close').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('card-panel').classList.remove('show');
+  });
+
+  // ═══ PREFLIGHT ══════════════════════════════════════
   async function preflight() {
-    for (const [u,l] of [
-      ['./external/xr/xr.js',         'xr.js'],
-      ['./external/xr/xr-slam.js',    'xr-slam.js ← 相機核心'],
-      [AR_CONFIG.cardTargetJson,       'isaofront.json'],
-      [AR_CONFIG.videoTargetJson,      'isaoback.json'],
+    for (const [url, label] of [
+      ['./external/xr/xr.js',              'xr.js'],
+      ['./external/xr/xr-slam.js',         'xr-slam.js ← 相機核心'],
+      ['./external/xrextras/xrextras.js',  'xrextras.js'],
+      ['./external/landing-page/landing-page.js', 'landing-page.js'],
+      [AR_CONFIG.cardTargetJson,           'isaofront.json'],
+      [AR_CONFIG.videoTargetJson,          'isaoback.json'],
     ]) {
       try {
-        const r = await fetch(u, {method:'HEAD'});
-        D.log((r.ok?'✅':'❌')+' '+l+(r.ok?'':' HTTP'+r.status), r.ok?'ok':'err');
-      } catch { D.log('❌ '+l, 'err'); }
+        const r = await fetch(url, { method:'HEAD' });
+        D.log((r.ok ? '✅' : '❌') + ' ' + label + (r.ok ? '' : ' HTTP' + r.status), r.ok ? 'ok' : 'err');
+      } catch {
+        D.log('❌ ' + label, 'err');
+      }
     }
   }
 
-  // ═══════════════════════════════════════════════════════
-  // ★★★  3D CARD CONTENT SYSTEM  ★★★
-  //
-  // 所有聯絡資訊、按鈕、社群圖示均以 Three.js CanvasTexture /
-  // TextureLoader 建立，附加在 cardGroup，真正浮現在 AR 空間中。
-  // 點擊透過 Raycaster 偵測，完全不依賴 DOM overlay。
-  // ═══════════════════════════════════════════════════════
+  // ═══ THREE.JS / XR HELPERS ═══════════════════════════════
+  function mkPlane(w, h, texture) {
+    return new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        toneMapped: false,
+      })
+    );
+  }
 
-  // ── Canvas helper: 圓角矩形路徑 ───────────────────────
-  function rrect(ctx, x, y, w, h, r) {
+  function roundedRectPath(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.lineTo(x+w-r, y);   ctx.arcTo(x+w, y,   x+w, y+r,   r);
-    ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
-    ctx.lineTo(x+r, y+h);   ctx.arcTo(x, y+h,   x, y+h-r,   r);
-    ctx.lineTo(x, y+r);     ctx.arcTo(x, y,     x+r, y,      r);
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
   }
 
-  // ── Canvas mesh factory ────────────────────────────────
-  // drawFn(ctx, W, H) → void
-  // Returns THREE.Mesh with CanvasTexture
-  function mkCanvas(planeW, planeH, texW, texH, drawFn) {
-    const cv = document.createElement('canvas');
-    cv.width = texW; cv.height = texH;
-    const ctx = cv.getContext('2d');
-    drawFn(ctx, texW, texH);
-    const tex = new THREE.CanvasTexture(cv);
-    tex.minFilter = tex.magFilter = THREE.LinearFilter;
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(planeW, planeH),
-      new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false, depthWrite:false})
-    );
-    return mesh;
+  function makeCanvasTexture(draw, w = 1024, h = 1024) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    draw(ctx, canvas);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return { canvas, ctx, tex };
   }
 
-  // ── Image-texture mesh (for social icons & profile photo) ─
-  function mkImgMesh(planeW, planeH, url, onLoad, onErr) {
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = 'anonymous';
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(planeW, planeH),
-      new THREE.MeshBasicMaterial({color:0x001830, transparent:true, side:THREE.DoubleSide, toneMapped:false, depthWrite:false})
-    );
-    loader.load(url,
-      tex => {
-        tex.minFilter = tex.magFilter = THREE.LinearFilter;
-        mesh.material.map   = tex;
-        mesh.material.color.set(0xffffff);
-        mesh.material.needsUpdate = true;
-        if (onLoad) onLoad(mesh);
-      },
-      undefined,
-      () => { if (onErr) onErr(mesh); }
-    );
-    return mesh;
+  async function loadImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
   }
 
-  // ── Circle-cropped profile photo ──────────────────────
-  function mkCirclePhoto(planeSize, imgUrl, callback) {
-    const SZ = 256;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = SZ;
-      const ctx = cv.getContext('2d');
-      // Glow ring
-      ctx.shadowColor = 'rgba(0,200,255,0.5)';
-      ctx.shadowBlur  = 14;
-      ctx.beginPath(); ctx.arc(SZ/2, SZ/2, SZ/2-2, 0, Math.PI*2); ctx.clip();
-      ctx.drawImage(img, 0, 0, SZ, SZ);
-      ctx.resetTransform();
-      // Border
-      ctx.beginPath(); ctx.arc(SZ/2, SZ/2, SZ/2-2, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(0,190,255,0.75)'; ctx.lineWidth = 5; ctx.stroke();
-      const tex = new THREE.CanvasTexture(cv);
-      tex.minFilter = tex.magFilter = THREE.LinearFilter;
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(planeSize, planeSize),
-        new THREE.MeshBasicMaterial({map:tex, transparent:true, side:THREE.DoubleSide, toneMapped:false, depthWrite:false})
-      );
-      callback(mesh);
-    };
-    img.onerror = () => D.log('❌ 個人照片載入失敗', 'err');
-    img.src = imgUrl;
-  }
-
-  // ── Build the 3D floating card info layout ────────────
-  // All positions are in cardGroup LOCAL space.
-  // The card target normalizes to width=1.0 in local space.
-  // Layout assumes a landscape card (88×54mm ≈ aspect 1.63).
-  //   Card local extent: x[-0.5,+0.5], y[-0.306,+0.306]
-  //   Content extends beyond card edges for visibility.
-  //
-  // Layout (approximate, all z=0.05~0.08 to float above card):
-  //   LEFT : Raccoon (handled separately in loadRaccoon)
-  //   RIGHT: Profile photo, Name, Title (top right)
-  //   BOTTOM half (full width): Contact buttons × 3
-  //   BELOW card: Social icons row × 4
-  // ─────────────────────────────────────────────────────
-  function buildCardContent(parentGroup, interactables) {
-    const Z  = 0.06;  // z-offset: float this many "card widths" above surface
-    const Zb = 0.04;  // background slightly deeper
-
-    // ① Semi-transparent background panel behind all content
-    const bgMesh = mkCanvas(0.92, 0.80, 512, 444, (ctx, W, H) => {
-      ctx.clearRect(0, 0, W, H);
-      rrect(ctx, 3, 3, W-6, H-6, 32);
-      ctx.fillStyle = 'rgba(0,8,28,0.82)';
+  function buildBadgeTexture({ title, subtitle = '', emoji = '◌', accent = 'rgba(0,200,255,.95)' }) {
+    const { tex } = makeCanvasTexture((ctx, canvas) => {
+      const W = canvas.width;
+      const H = canvas.height;
+      const grad = ctx.createRadialGradient(W * 0.35, H * 0.3, 20, W * 0.5, H * 0.5, W * 0.55);
+      grad.addColorStop(0, 'rgba(0, 210, 255, .22)');
+      grad.addColorStop(1, 'rgba(0, 10, 24, .96)');
+      ctx.fillStyle = grad;
+      roundedRectPath(ctx, 20, 20, W - 40, H - 40, 42);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(0,180,255,0.45)';
-      ctx.lineWidth = 2.5;
+
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 8;
+      ctx.globalAlpha = 0.55;
       ctx.stroke();
-      // Top accent line
-      const g = ctx.createLinearGradient(0,0,W,0);
-      g.addColorStop(0,'rgba(0,180,255,0)');
-      g.addColorStop(0.35,'rgba(0,210,255,0.75)');
-      g.addColorStop(0.65,'rgba(0,210,255,0.75)');
-      g.addColorStop(1,'rgba(0,180,255,0)');
-      ctx.fillStyle = g; ctx.fillRect(3, 3, W-6, 2.5);
-    });
-    bgMesh.position.set(0.05, -0.04, Zb);
-    parentGroup.add(bgMesh);
+      ctx.globalAlpha = 1;
 
-    // ② Name text
-    const nameMesh = mkCanvas(0.44, 0.082, 512, 96, (ctx, W, H) => {
-      ctx.clearRect(0, 0, W, H);
-      ctx.shadowColor = 'rgba(0,210,255,0.6)'; ctx.shadowBlur = 14;
-      ctx.fillStyle   = 'rgba(230,248,255,1)';
-      ctx.font        = `bold ${Math.round(H*0.62)}px sans-serif`;
-      ctx.textAlign   = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(AR_CONFIG.profile.name, W/2, H/2);
-    });
-    nameMesh.position.set(0.28, 0.07, Z);
-    parentGroup.add(nameMesh);
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(0,200,255,.18)';
+      ctx.arc(W/2, H*0.42, 86, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '88px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(emoji, W/2, H*0.42);
 
-    // ③ Title text
-    const titleMesh = mkCanvas(0.42, 0.055, 512, 64, (ctx, W, H) => {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = 'rgba(0,175,255,0.85)';
-      ctx.font      = `${Math.round(H*0.55)}px monospace`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(AR_CONFIG.profile.title.toUpperCase(), W/2, H/2);
-    });
-    titleMesh.position.set(0.28, -0.01, Z);
-    parentGroup.add(titleMesh);
-
-    // ④ Horizontal divider
-    const divMesh = mkCanvas(0.82, 0.005, 512, 4, (ctx, W, H) => {
-      const g = ctx.createLinearGradient(0,0,W,0);
-      g.addColorStop(0,'rgba(0,190,255,0)');
-      g.addColorStop(0.25,'rgba(0,190,255,0.4)');
-      g.addColorStop(0.75,'rgba(0,190,255,0.4)');
-      g.addColorStop(1,'rgba(0,190,255,0)');
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-    });
-    divMesh.position.set(0.04, -0.09, Z);
-    parentGroup.add(divMesh);
-
-    // ⑤ Contact buttons (clickable) — 3 rows
-    // Draw a button with color accent, icon, label
-    function drawBtn(ctx, W, H, c) {
-      ctx.clearRect(0, 0, W, H);
-      // Background
-      rrect(ctx, 2, 2, W-4, H-4, H*0.28);
-      ctx.fillStyle = 'rgba(0,22,58,0.75)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(0,150,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
-      // Left accent bar
-      rrect(ctx, 2, 2, 6, H-4, 3);
-      ctx.fillStyle = c.color; ctx.fill();
-      // Icon
-      const ih = Math.round(H * 0.55);
-      ctx.font = `${ih}px sans-serif`;
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(220,242,255,0.9)';
-      ctx.fillText(c.icon, H*0.42, H*0.5);
-      // Label
-      const lh = Math.round(H * 0.4);
-      ctx.font = `${lh}px sans-serif`;
-      ctx.fillStyle = 'rgba(190,230,255,0.92)';
-      ctx.fillText(c.label, H*1.2, H*0.5);
-      // Arrow hint
-      ctx.font = `${Math.round(H*0.32)}px monospace`;
-      ctx.textAlign = 'right';
-      ctx.fillStyle = 'rgba(0,160,255,0.4)';
-      ctx.fillText('›', W-H*0.35, H*0.5);
-    }
-
-    AR_CONFIG.contacts.forEach((c, i) => {
-      const m = mkCanvas(0.80, 0.10, 512, 64, (ctx, W, H) => drawBtn(ctx, W, H, c));
-      m.position.set(0.04, -0.19 - i * 0.115, Z);
-      parentGroup.add(m);
-      interactables.push({ mesh:m, url:c.url, label:c.label });
-    });
-
-    // ⑥ "TAP BUTTONS TO CONTACT" hint text
-    const hintMesh = mkCanvas(0.58, 0.034, 512, 28, (ctx, W, H) => {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = 'rgba(0,155,255,0.38)';
-      ctx.font      = `${Math.round(H*0.65)}px monospace`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('● TAP BUTTON TO CONTACT ●', W/2, H/2);
-    });
-    hintMesh.position.set(0.04, -0.53, Z);
-    parentGroup.add(hintMesh);
-
-    // ⑦ Social icon row (4 square icons, clickable)
-    // Fallback: colored square with first letter
-    function makeFallbackIcon(label) {
-      return mkCanvas(0.13, 0.13, 128, 128, (ctx, W, H) => {
-        rrect(ctx, 3, 3, W-6, H-6, 18);
-        ctx.fillStyle = 'rgba(0,24,64,0.85)'; ctx.fill();
-        ctx.strokeStyle = 'rgba(0,140,255,0.3)'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = 'rgba(0,180,255,0.8)';
-        ctx.font = `bold ${Math.round(W*0.45)}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(label[0], W/2, H/2);
-      });
-    }
-
-    const socXs = [-0.275, -0.09, +0.09, +0.275];
-    AR_CONFIG.socials.forEach((s, i) => {
-      // Start with fallback, replace with image when loaded
-      const fbMesh = makeFallbackIcon(s.label);
-      fbMesh.position.set(socXs[i], -0.64, Z);
-      parentGroup.add(fbMesh);
-      interactables.push({ mesh:fbMesh, url:s.url, label:s.label });
-
-      const loader = new THREE.TextureLoader();
-      loader.crossOrigin = 'anonymous';
-      loader.load(s.img, tex => {
-        tex.minFilter = tex.magFilter = THREE.LinearFilter;
-        fbMesh.material.map   = tex;
-        fbMesh.material.color.set(0xffffff);
-        fbMesh.material.needsUpdate = true;
-      });
-    });
-
-    // ⑧ Profile photo (async load, circle-cropped)
-    mkCirclePhoto(0.23, AR_CONFIG.profile.photo, mesh => {
-      mesh.position.set(0.3, 0.24, Z + 0.005);
-      parentGroup.add(mesh);
-    });
+      ctx.fillStyle = 'rgba(240,248,255,.98)';
+      ctx.font = 'bold 42px sans-serif';
+      ctx.fillText(title, W/2, H*0.78);
+      if (subtitle) {
+        ctx.fillStyle = 'rgba(150,210,245,.82)';
+        ctx.font = '24px monospace';
+        ctx.fillText(subtitle, W/2, H*0.89);
+      }
+    }, 512, 512);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return tex;
   }
 
-  // ── Raccoon GLTF loader ────────────────────────────────
+  function makeSprite(tex, w, h) {
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(w, h, 1);
+    return sprite;
+  }
+
+  function makeSoftRing(radius = 0.8, tube = 0.015) {
+    return new THREE.Mesh(
+      new THREE.TorusGeometry(radius, tube, 12, 64),
+      new THREE.MeshBasicMaterial({
+        color: 0x00d8ff,
+        transparent: true,
+        opacity: 0.35,
+      })
+    );
+  }
+
+  async function createHoloCardTexture(profile) {
+    const initials = (profile.name || 'AR')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(s => s[0]?.toUpperCase() || '')
+      .join('');
+
+    const { tex } = makeCanvasTexture((ctx, canvas) => {
+      const W = canvas.width;
+      const H = canvas.height;
+
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, 'rgba(0, 24, 56, .98)');
+      grad.addColorStop(1, 'rgba(0, 6, 18, .98)');
+      ctx.fillStyle = grad;
+      roundedRectPath(ctx, 20, 20, W - 40, H - 40, 54);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(0,210,255,.78)';
+      ctx.lineWidth = 8;
+      ctx.globalAlpha = 0.45;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      const bar = ctx.createLinearGradient(0, 0, W, 0);
+      bar.addColorStop(0, 'rgba(0,0,0,0)');
+      bar.addColorStop(.5, 'rgba(0,220,255,.55)');
+      bar.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = bar;
+      ctx.fillRect(40, 56, W - 80, 4);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(160, 210, 112, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(0, 180, 255, .18)';
+      ctx.fillRect(48, 98, 224, 224);
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.font = 'bold 72px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(initials || 'AR', 160, 208);
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = 'rgba(0,200,255,.95)';
+      ctx.arc(160, 210, 112, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(236,248,255,.98)';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = 'bold 62px sans-serif';
+      ctx.fillText(profile.name, 322, 178);
+
+      ctx.fillStyle = 'rgba(120,190,230,.92)';
+      ctx.font = '30px monospace';
+      ctx.fillText(profile.title, 324, 240);
+
+      ctx.fillStyle = 'rgba(120,190,230,.62)';
+      ctx.font = '22px monospace';
+      ctx.fillText('SCAN THE FLOATING ICONS', 324, 286);
+
+      for (let i = 0; i < 10; i++) {
+        ctx.fillStyle = `rgba(0,220,255,${0.16 - i * 0.01})`;
+        ctx.beginPath();
+        ctx.arc(910 - i * 25, 500, 4 + i * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }, 1024, 640);
+
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+
+    try {
+      const img = await loadImage(profile.photo);
+      const canvas = tex.image;
+      const ctx = canvas.getContext('2d');
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(160, 210, 106, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, 48, 98, 224, 224);
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = 'rgba(0,200,255,.95)';
+      ctx.arc(160, 210, 112, 0, Math.PI * 2);
+      ctx.stroke();
+      tex.needsUpdate = true;
+    } catch (err) {
+      D.log('⚠ profile photo 使用預設圖樣: ' + err.message, 'inf');
+    }
+
+    return tex;
+  }
+
+  function createFloatingCardRig(profile) {
+    const rig = new THREE.Group();
+
+    const holo = mkPlane(1.72, 1.08, null);
+    holo.material = new THREE.MeshBasicMaterial({
+      map: null,
+      color: 0x00d8ff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.06,
+      toneMapped: false,
+    });
+    rig.add(holo);
+
+    const ring = makeSoftRing(0.92, 0.014);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.z = -0.03;
+    rig.add(ring);
+
+    const items = [];
+    const contactDefs = [
+      { title: 'WEB', subtitle: 'Website', emoji: '🌐', accent: 'rgba(0,210,255,.95)', pos: [-0.92, 0.00, 0.12], size: [0.36, 0.36] },
+      { title: 'MAIL', subtitle: 'Email',   emoji: '✉️', accent: 'rgba(0,255,180,.95)', pos: [-0.46, -0.56, 0.10], size: [0.34, 0.34] },
+      { title: 'TEL',  subtitle: 'Phone',   emoji: '📞', accent: 'rgba(255,170,0,.95)', pos: [ 0.00, 0.00, 0.12], size: [0.34, 0.34] },
+    ];
+    const socialDefs = [
+      { title: 'LINE', subtitle: 'chat', emoji: 'L', accent: 'rgba(0,255,120,.95)', pos: [0.56, 0.34, 0.10], size: [0.28, 0.28] },
+      { title: 'YT',   subtitle: 'video', emoji: '▶', accent: 'rgba(255,80,80,.95)', pos: [0.96, 0.08, 0.10], size: [0.28, 0.28] },
+      { title: 'IG',   subtitle: 'photo', emoji: '◎', accent: 'rgba(255,120,220,.95)', pos: [0.70, -0.36, 0.10], size: [0.28, 0.28] },
+      { title: 'FB',   subtitle: 'social', emoji: 'f', accent: 'rgba(80,140,255,.95)', pos: [0.22, -0.62, 0.10], size: [0.28, 0.28] },
+    ];
+
+    const makeBadge = (def) => {
+      const sprite = makeSprite(buildBadgeTexture(def), def.size[0], def.size[1]);
+      sprite.position.set(def.pos[0], def.pos[1], def.pos[2]);
+      sprite.userData.basePos = new THREE.Vector3(def.pos[0], def.pos[1], def.pos[2]);
+      sprite.userData.phase = Math.random() * Math.PI * 2;
+      sprite.userData.speed = 1.2 + Math.random() * 0.8;
+      sprite.userData.amp = 0.016 + Math.random() * 0.015;
+      rig.add(sprite);
+      items.push(sprite);
+    };
+
+    contactDefs.forEach(makeBadge);
+    socialDefs.forEach(makeBadge);
+
+    const headline = makeSprite(
+      buildBadgeTexture({ title: 'AR CARD', subtitle: 'front target', emoji: '◈', accent: 'rgba(0,220,255,.95)' }),
+      0.42, 0.42
+    );
+    headline.position.set(0.0, 0.72, 0.11);
+    headline.userData.basePos = headline.position.clone();
+    headline.userData.phase = 0.4;
+    headline.userData.speed = 1.4;
+    headline.userData.amp = 0.012;
+    rig.add(headline);
+    items.push(headline);
+
+    return { rig, holo, ring, items };
+  }
+
+  // ═══ RACCOON LOADER ══════════════════════════════════
+  // 載入 raccoon GLTF 並播放所有內建動畫 + 浮動效果
   function loadRaccoon(parentGroup, onLoaded) {
     const loader = new THREE.GLTFLoader();
     loader.load(
       AR_CONFIG.raccoonSrc,
-      gltf => {
-        const model = gltf.scene;
-        const mixer = new THREE.AnimationMixer(model);
+      (gltf) => {
+        const model   = gltf.scene;
+        const mixer   = new THREE.AnimationMixer(model);
         gltf.animations.forEach(clip => mixer.clipAction(clip).play());
+
         model.scale.setScalar(0.09);
-        model.position.set(-0.3, -0.15, 0);
+        model.position.set(-0.25, -0.15, 0);
         parentGroup.add(model);
-        D.log('✅ 浣熊載入完成，動畫×' + gltf.animations.length, 'ok');
+
+        D.log('✅ 浣熊模型載入完成，動畫數: ' + gltf.animations.length, 'ok');
         onLoaded({ model, mixer });
       },
       undefined,
-      err => D.log('❌ GLTF: ' + (err.message || err), 'err')
+      err => D.log('❌ GLTF 載入失敗: ' + err.message, 'err')
     );
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  AR MODULE
-  // ═══════════════════════════════════════════════════════
-  function mkARModule(allTargetData) {
+  // ═══ AR MODULE ══════════════════════════════════════
+  function mkARModule(targetSlots) {
+    const targetByName = new Map();
+    const slotByName = new Map();
 
-    // ── ★ BUG FIX：用 .name 欄位直接比對，不靠 index ─────
-    // 舊的 allTargetData[0] / [1] 做法：
-    //   若 isaofront.json 載入失敗，filter(Boolean) 後 index 0 = isaoback
-    //   → isaoback 被誤判為 card target → 正面永遠無法觸發
-    // 新做法：
-    //   AR_CONFIG.cardTargetName  = 'isaofront'  (config 直接指定)
-    //   AR_CONFIG.videoTargetName = 'isaoback'
-    //   onFound() 用 name === AR_CONFIG.cardTargetName 判斷
-    // ─────────────────────────────────────────────────────
-    const cardName  = AR_CONFIG.cardTargetName;
-    const videoName = AR_CONFIG.videoTargetName;
-
-    // 驗證兩個 target 都有成功載入
-    const hasCard  = allTargetData.some(d => d.name === cardName);
-    const hasVideo = allTargetData.some(d => d.name === videoName);
-    D.log('card  "'+cardName+'": '  + (hasCard  ? '✅' : '❌ 未載入'), hasCard  ? 'ok' : 'err');
-    D.log('video "'+videoName+'": ' + (hasVideo ? '✅' : '❌ 未載入'), hasVideo ? 'ok' : 'err');
-
-    // 3D groups
-    let cardGroup, raccoonData = null;
-    let videoGroup, videoMesh, videoEl, videoTex;
-    let videoPlaying = false, videoHasInteracted = false;
-
-    // Raycaster interactables: [{mesh, url, label}]
-    const interactables = [];
-    const raycaster     = new THREE.Raycaster();
-    let   sceneCamera   = null;  // stored in onStart
-
-    const clock   = new THREE.Clock();
-    const scanEl  = document.getElementById('scan-ov');
-    const vpPanel = document.getElementById('video-panel');
-    const vpIcon  = document.getElementById('vp-icon');
-    const vpTxt   = document.getElementById('vp-txt');
-
-    const S = { cardVis:false, videoVis:false };
-
-    // ── Touch / click → raycast ────────────────────────
-    function handleTap(clientX, clientY) {
-      if (!S.cardVis || !sceneCamera || interactables.length === 0) return;
-
-      const canvas = document.getElementById('renderCanvas');
-      const rect   = canvas.getBoundingClientRect();
-      const ndcX   = ((clientX - rect.left) / rect.width)  * 2 - 1;
-      const ndcY   = -((clientY - rect.top)  / rect.height) * 2 + 1;
-
-      raycaster.setFromCamera({ x: ndcX, y: ndcY }, sceneCamera);
-      const meshes = interactables.map(i => i.mesh);
-      const hits   = raycaster.intersectObjects(meshes, false);
-
-      if (hits.length > 0) {
-        const item = interactables.find(i => i.mesh === hits[0].object);
-        if (!item) return;
-        D.log('3D tap → ' + item.label + ' : ' + item.url, 'ok');
-        // Visual feedback: briefly scale up
-        item.mesh.scale.set(1.1, 1.1, 1.1);
-        setTimeout(() => item.mesh.scale.set(1,1,1), 200);
-        showToast('▶ ' + item.label);
-        // Open URL
-        if (item.url.startsWith('http')) {
-          window.open(item.url, '_blank', 'noopener noreferrer');
-        } else {
-          window.location.href = item.url;
-        }
-      }
+    for (const slot of targetSlots) {
+      if (!slot?.data?.name) continue;
+      targetByName.set(slot.data.name, slot);
+      slotByName.set(slot.role, slot);
     }
 
-    // ── Video panel button ─────────────────────────────
-    document.getElementById('vp-play-btn').addEventListener('click', e => {
-      e.stopPropagation();
-      if (!videoEl) return;
-      if (!videoHasInteracted) { videoEl.muted = false; videoHasInteracted = true; }
-      if (videoPlaying) {
-        videoEl.pause(); videoPlaying = false;
-        vpIcon.textContent = '▶'; vpTxt.textContent = '點擊螢幕 播放影片';
-      } else {
-        videoEl.play().then(() => {
-          videoPlaying = true;
-          vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊螢幕 暫停影片';
-        }).catch(err => D.log('影片播放失敗: '+err.message, 'err'));
-      }
-    });
+    const frontSlot = slotByName.get('front') || null;
+    const backSlot  = slotByName.get('back')  || null;
+
+    D.log('front target: ' + (frontSlot?.data?.name || '未載入'), frontSlot ? 'ok' : 'err');
+    D.log('back  target: ' + (backSlot?.data?.name  || '未載入'), backSlot ? 'ok' : 'err');
+
+    const clock = new THREE.Clock();
+
+    const scanEl = document.getElementById('scan-ov');
+    const videoPanelEl = document.getElementById('video-panel');
+    const vpIcon = document.getElementById('vp-icon');
+    const vpTxt  = document.getElementById('vp-txt');
+
+    const S = {
+      frontVis: false,
+      backVis: false,
+    };
+
+    let frontGroup, backGroup;
+    let cardRig = null;
+    let holoPlane = null;
+    let hologramTexture = null;
+
+    let raccoonData = null;
+    let videoEl = null;
+    let videoTex = null;
+    let videoMesh = null;
+    let videoPlaying = false;
+    let videoHasInteracted = false;
+
+    function resolveLogicalRole(name) {
+      const direct = targetByName.get(name);
+      if (direct) return direct.role;
+
+      const low = String(name || '').toLowerCase();
+      if (low.includes('front') || low.includes('card')) return 'front';
+      if (low.includes('back') || low.includes('video')) return 'back';
+
+      return null;
+    }
 
     function applyPose(group, detail) {
-      const {position:p, rotation:r, scale:s} = detail;
+      if (!group || !detail) return;
+      const { position:p, rotation:r, scale:s } = detail;
       group.position.set(p.x, p.y, p.z);
       group.quaternion.set(r.x, r.y, r.z, r.w);
       group.scale.setScalar(s);
     }
 
+    function setFrontVisible(visible) {
+      S.frontVis = visible;
+      if (frontGroup) frontGroup.visible = visible;
+    }
+
+    function setBackVisible(visible) {
+      S.backVis = visible;
+      if (backGroup) backGroup.visible = visible;
+    }
+
+    function updateVideoButton() {
+      if (!videoEl) return;
+      vpIcon.textContent = videoPlaying ? '⏸' : '▶';
+      vpTxt.textContent  = videoPlaying ? '點擊螢幕 暫停影片' : '點擊螢幕 播放影片';
+    }
+
+    document.getElementById('vp-play-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      if (!videoEl) return;
+      if (!videoHasInteracted) {
+        videoEl.muted = false;
+        videoHasInteracted = true;
+      }
+      if (videoPlaying) {
+        videoEl.pause();
+        videoPlaying = false;
+        updateVideoButton();
+      } else {
+        videoEl.play().then(() => {
+          videoPlaying = true;
+          updateVideoButton();
+        }).catch(err => D.log('影片播放失敗: ' + err.message, 'err'));
+      }
+    });
+
+    async function ensureHologramTexture() {
+      if (hologramTexture) return hologramTexture;
+      hologramTexture = await createHoloCardTexture(AR_CONFIG.profile);
+      if (holoPlane?.material) {
+        holoPlane.material.map = hologramTexture;
+        holoPlane.material.opacity = 0.96;
+        holoPlane.material.color.set(0xffffff);
+        holoPlane.material.needsUpdate = true;
+      }
+      return hologramTexture;
+    }
+
     function onFound({ detail }) {
-      const name = detail.name;
-      D.log('✅ imagefound: "' + name + '"', 'ok');
+      const name = detail?.name || '';
+      const role = resolveLogicalRole(name);
+      D.log('✅ imagefound: "' + name + '" → ' + (role || 'unknown'), 'ok');
       doFlash();
 
-      if (name === cardName) {
-        applyPose(cardGroup, detail);
-        cardGroup.visible = true;
-        S.cardVis = true;
+      if (role === 'front') {
+        applyPose(frontGroup, detail);
+        setFrontVisible(true);
         scanEl.classList.add('hidden');
-        showSt('🦝 名片已鎖定！點擊 3D 按鈕聯絡', 4000);
+        showSt('🪪 名片正面已鎖定');
       }
 
-      if (name === videoName) {
-        applyPose(videoGroup, detail);
-        videoGroup.visible = true;
-        S.videoVis = true;
+      if (role === 'back') {
+        applyPose(backGroup, detail);
+        setBackVisible(true);
         scanEl.classList.add('hidden');
-        vpPanel.classList.add('show');
-        if (!videoHasInteracted && videoEl) {
-          videoEl.muted = true; videoEl.currentTime = 0;
+        videoPanelEl.classList.add('show');
+
+        if (!videoEl) return;
+        if (!videoHasInteracted) {
+          videoEl.muted = true;
+          videoEl.currentTime = 0;
           videoEl.play().then(() => {
             videoPlaying = true;
-            vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊螢幕 暫停影片';
-          }).catch(()=>{});
+            updateVideoButton();
+            D.log('影片自動靜音播放', 'ok');
+          }).catch(() => {});
         }
-        showSt('🎬 影片目標鎖定');
+        showSt('🎬 背面影片已啟動');
       }
     }
 
     function onUpdated({ detail }) {
-      const name = detail.name;
-      if (name === cardName) {
-        applyPose(cardGroup, detail);
-        if (!S.cardVis) { cardGroup.visible = true; S.cardVis = true; }
+      const name = detail?.name || '';
+      const role = resolveLogicalRole(name);
+
+      if (role === 'front') {
+        applyPose(frontGroup, detail);
+        if (!S.frontVis) setFrontVisible(true);
       }
-      if (name === videoName) {
-        applyPose(videoGroup, detail);
-        if (!S.videoVis) { videoGroup.visible = true; S.videoVis = true; }
+      if (role === 'back') {
+        applyPose(backGroup, detail);
+        if (!S.backVis) setBackVisible(true);
       }
     }
 
     function onLost({ detail }) {
       const name = detail?.name || '';
-      D.log('📍 imagelost: "' + name + '"', 'inf');
-      if (name === cardName) {
-        S.cardVis = false;
-        cardGroup.visible = false;
-        // 保持 3D content 的 interactables 可見狀態，
-        // 讓使用者略微移開後仍可點擊（若希望消失則改 true→false）
+      const role = resolveLogicalRole(name);
+      D.log('📍 imagelost: "' + name + '" → ' + (role || 'unknown'), 'inf');
+
+      if (role === 'front') {
+        setFrontVisible(false);
       }
-      if (name === videoName) {
-        S.videoVis = false;
-        videoGroup.visible = false;
-        vpPanel.classList.remove('show');
-        if (videoEl) { videoEl.pause(); videoPlaying = false; }
-        vpIcon.textContent = '▶'; vpTxt.textContent = '點擊螢幕 播放影片';
+
+      if (role === 'back') {
+        setBackVisible(false);
+        videoPanelEl.classList.remove('show');
+        if (videoEl) {
+          videoEl.pause();
+          videoPlaying = false;
+          updateVideoButton();
+        }
       }
-      if (!S.cardVis && !S.videoVis) {
+
+      if (!S.frontVis && !S.backVis) {
         scanEl.classList.remove('hidden');
         showSt('🔍 請對準名片正面或背面');
       }
@@ -699,10 +967,7 @@
       name: 'ar-card',
 
       onStart() {
-        const { scene, renderer, camera } = XR8.Threejs.xrScene();
-        sceneCamera = camera;
-
-        // ★ 黑屏修復：Three.js 每幀不清畫布（否則蓋掉相機畫面）
+        const { scene, renderer } = XR8.Threejs.xrScene();
         renderer.autoClear = false;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -710,62 +975,91 @@
           'position:fixed!important;top:0!important;left:0!important;' +
           'width:100vw!important;height:100vh!important;z-index:0!important;';
 
-        // Lights
-        scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-        const dir = new THREE.DirectionalLight(0xffffff, 0.7);
-        dir.position.set(0.5, 1.5, 1); scene.add(dir);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.35));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        dirLight.position.set(1, 2, 1);
+        scene.add(dirLight);
 
-        // ── Card group (名片正面 → raccoon + 3D info) ──
-        cardGroup = new THREE.Group();
-        cardGroup.visible = false;
-        scene.add(cardGroup);
+        frontGroup = new THREE.Group();
+        frontGroup.visible = false;
+        scene.add(frontGroup);
 
-        loadRaccoon(cardGroup, data => { raccoonData = data; });
-        buildCardContent(cardGroup, interactables);
+        cardRig = createFloatingCardRig(AR_CONFIG.profile);
+        frontGroup.add(cardRig.rig);
+        holoPlane = cardRig.holo;
 
-        // ── Video group (名片背面 → 影片平面) ──────────
-        videoGroup = new THREE.Group();
-        videoGroup.visible = false;
-        scene.add(videoGroup);
+        ensureHologramTexture();
+
+        loadRaccoon(frontGroup, data => { raccoonData = data; });
+
+        backGroup = new THREE.Group();
+        backGroup.visible = false;
+        scene.add(backGroup);
+
+        const frame = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.62, 0.95),
+          new THREE.MeshBasicMaterial({
+            color: 0x071a33,
+            transparent: true,
+            opacity: 0.55,
+            side: THREE.DoubleSide,
+          })
+        );
+        frame.position.set(0, 0, -0.02);
+        backGroup.add(frame);
 
         videoEl = document.createElement('video');
         videoEl.src = AR_CONFIG.videoSrc;
-        videoEl.loop = true; videoEl.muted = true;
-        videoEl.playsInline = true; videoEl.crossOrigin = 'anonymous';
+        videoEl.loop = true;
+        videoEl.muted = true;
+        videoEl.playsInline = true;
+        videoEl.crossOrigin = 'anonymous';
         videoEl.setAttribute('webkit-playsinline', 'true');
 
         videoTex = new THREE.VideoTexture(videoEl);
-        videoTex.minFilter = videoTex.magFilter = THREE.LinearFilter;
-        videoTex.format = THREE.RGBAFormat;
+        videoTex.minFilter = THREE.LinearFilter;
+        videoTex.magFilter = THREE.LinearFilter;
+        videoTex.format    = THREE.RGBAFormat;
 
-        videoMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.5, 1.5*(9/16)),
-          new THREE.MeshBasicMaterial({map:videoTex, side:THREE.DoubleSide, toneMapped:false})
+        videoMesh = mkPlane(1.52, 1.52 * (9/16), videoTex);
+        videoMesh.position.set(0, 0, 0.02);
+        backGroup.add(videoMesh);
+
+        const playHint = makeSprite(
+          buildBadgeTexture({ title: 'VIDEO', subtitle: 'tap to play', emoji: '▶', accent: 'rgba(255,220,120,.95)' }),
+          0.34, 0.34
         );
-        videoGroup.add(videoMesh);
+        playHint.position.set(0, 0.62, 0.12);
+        backGroup.add(playHint);
 
-        // ── Touch / click 事件（3D button raycasting）──
-        const cvs = renderer.domElement;
-        cvs.addEventListener('touchend', e => {
-          e.preventDefault();
-          if (e.changedTouches.length > 0) {
-            const t = e.changedTouches[0];
-            handleTap(t.clientX, t.clientY);
-          }
-        }, { passive: false });
-        cvs.addEventListener('click', e => handleTap(e.clientX, e.clientY));
-
-        D.log('✅ Scene 準備完成（3D card content + raycaster）', 'ok');
+        D.log('✅ Scene 準備完成', 'ok');
+        setTimeout(() => showSt('對準名片正面看 AR，對準背面看影片', 4200), 800);
         clock.start();
-        setTimeout(() => showSt('請對準名片正面（小浣熊）或背面（影片）', 4000), 800);
       },
 
       onUpdate() {
         const delta = clock.getDelta();
-        if (raccoonData?.mixer) raccoonData.mixer.update(delta);
-        // Raccoon floating sine wave
-        if (raccoonData?.model && cardGroup.visible) {
-          raccoonData.model.position.y = -0.15 + Math.sin(clock.elapsedTime * 1.2) * 0.022;
+
+        if (raccoonData?.mixer) {
+          raccoonData.mixer.update(delta);
+        }
+
+        if (raccoonData?.model && frontGroup.visible) {
+          raccoonData.model.position.y = -0.15 + Math.sin(clock.elapsedTime * 1.2) * 0.025;
+        }
+
+        if (cardRig?.rig && frontGroup.visible) {
+          const t = clock.elapsedTime;
+          cardRig.ring.rotation.z = t * 0.25;
+          cardRig.items.forEach((item) => {
+            const p = item.userData.basePos;
+            const amp = item.userData.amp || 0.01;
+            const speed = item.userData.speed || 1;
+            const phase = item.userData.phase || 0;
+            item.position.x = p.x + Math.sin(t * speed + phase) * amp * 0.55;
+            item.position.y = p.y + Math.cos(t * speed * 1.1 + phase) * amp;
+            item.position.z = p.z + Math.sin(t * speed * 0.7 + phase) * amp * 0.15;
+          });
         }
       },
 
@@ -780,16 +1074,23 @@
           const { renderer } = XR8.Threejs.xrScene();
           renderer.setSize(window.innerWidth, window.innerHeight, false);
         });
+
         document.addEventListener('visibilitychange', () => {
-          if (document.hidden && videoEl) { videoEl.pause(); videoPlaying = false; }
-          else if (S.videoVis && videoPlaying && videoEl) videoEl.play().catch(()=>{});
+          if (document.hidden && videoEl) {
+            videoEl.pause();
+            videoPlaying = false;
+            updateVideoButton();
+          } else if (S.backVis && videoPlaying && videoEl) {
+            videoEl.play().catch(() => {});
+          }
         });
       }
     };
   }
 
-  // ═══ MAIN — Permission Gate ═══════════════════════════
-  let _xrReady = false, _allTargetData = null;
+  // ═══ MAIN — PERMISSION GATE ═════════════════════════
+  let _xrReady = false;
+  let _allTargetData = null;
 
   window.addEventListener('xrloaded', () => {
     _xrReady = true;
@@ -798,78 +1099,97 @@
 
   async function preloadTargets() {
     const cfgs = [
-      { path:AR_CONFIG.cardTargetJson,  label:'isaofront' },
-      { path:AR_CONFIG.videoTargetJson, label:'isaoback'  },
+      { role: 'front', path: AR_CONFIG.cardTargetJson,  label: 'card'  },
+      { role: 'back',  path: AR_CONFIG.videoTargetJson, label: 'video' },
     ];
     const results = [];
-    for (const {path, label} of cfgs) {
+    for (const { role, path, label } of cfgs) {
       try {
         const r = await fetch(path);
-        if (!r.ok) throw new Error('HTTP'+r.status);
-        const d = await r.json();
-        results.push(d);
-        D.log('✅ "'+d.name+'" 預載完成 ('+label+')', 'ok');
-      } catch(e) {
-        D.log('❌ '+label+' 失敗: '+e.message, 'err');
-        // ★ push null 保持 index，但 mkARModule 已改為 name 比對，不影響路由
+        if (!r.ok) throw new Error('HTTP' + r.status);
+        const data = await r.json();
+        const slot = { role, label, path, data };
+        results.push(slot);
+        D.log('✅ target "' + data.name + '" 預載完成 (' + label + ')', 'ok');
+      } catch (e) {
+        D.log('❌ ' + label + ' 失敗: ' + e.message, 'err');
         results.push(null);
       }
     }
     const valid = results.filter(Boolean);
     if (valid.length === 0) {
       document.getElementById('dbg').classList.add('show');
-      showSt('❌ 目標 JSON 均載入失敗', 8000);
+      showSt('❌ 目標資料載入失敗，請確認 JSON 路徑', 8000);
+    } else if (valid.length < 2) {
+      D.log('⚠ 只載入了 ' + valid.length + '/2 個目標', 'inf');
     }
     _allTargetData = valid;
+    return valid.length > 0;
   }
 
   async function requestMotionPermissions() {
-    for (const E of [DeviceMotionEvent, DeviceOrientationEvent]) {
-      if (typeof E !== 'undefined' && typeof E.requestPermission === 'function') {
-        try { await E.requestPermission(); } catch {}
+    for (const Evt of [DeviceMotionEvent, DeviceOrientationEvent]) {
+      if (typeof Evt !== 'undefined' && typeof Evt.requestPermission === 'function') {
+        try { await Evt.requestPermission(); } catch {}
       }
     }
   }
 
   async function startXR8() {
     showSt('AR 初始化中…', 4000);
+
+    // 等待 target JSON
     if (!_allTargetData) {
-      let w=0;
-      while (!_allTargetData && w<10000) { await new Promise(r=>setTimeout(r,200)); w+=200; }
+      let w = 0;
+      while (!_allTargetData && w < 10000) { await new Promise(r=>setTimeout(r,200)); w+=200; }
     }
-    if (!_allTargetData?.length) { showSt('❌ 目標資料未就緒', 8000); return; }
-    let w=0;
-    while (!_xrReady && w<12000) { await new Promise(r=>setTimeout(r,200)); w+=200; }
+    if (!_allTargetData || _allTargetData.length === 0) {
+      showSt('❌ 目標資料未就緒', 8000); return;
+    }
+
+    // 等待 xr.js
+    let w = 0;
+    while (!_xrReady && w < 12000) { await new Promise(r=>setTimeout(r,200)); w+=200; }
     if (!_xrReady) { showSt('❌ AR 引擎未就緒', 8000); return; }
 
-    XR8.XrController.configure({ disableWorldTracking:true, imageTargetData:_allTargetData });
-    D.log('XrController: targets='+_allTargetData.length, 'ok');
+    XR8.XrController.configure({
+      disableWorldTracking: true,          // 純 image tracking，不做 SLAM 空間定位
+      imageTargetData:      _allTargetData.map(s => s.data),
+    });
+    D.log('XrController: targets=' + _allTargetData.length, 'ok');
 
     XR8.addCameraPipelineModules([
-      XR8.GlTextureRenderer.pipelineModule(),
-      XR8.Threejs.pipelineModule(),
-      XR8.XrController.pipelineModule(),
-      mkARModule(_allTargetData),
+      XR8.GlTextureRenderer.pipelineModule(),   // 相機畫面渲染
+      window.XRExtras?.FullWindowCanvas?.pipelineModule?.() || (() => ({}))(),
+      XR8.Threejs.pipelineModule(),             // Three.js 整合
+      XR8.XrController.pipelineModule(),        // 圖像追蹤控制器
+      mkARModule(_allTargetData),               // 自訂 AR 邏輯
+      window.XRExtras?.RuntimeError?.pipelineModule?.() || (() => ({}))(),
     ]);
-    XR8.run({ canvas:document.getElementById('renderCanvas') });
+    XR8.run({ canvas: document.getElementById('renderCanvas') });
     D.log('✅ XR8.run()', 'ok');
   }
 
+  // ── 開始按鈕（單一 user gesture 申請所有權限）──────
   document.getElementById('btn-start').addEventListener('click', async function() {
     this.disabled = true; this.textContent = '授權中…';
     await requestMotionPermissions();
-    document.getElementById('perm-gate').classList.add('fade');
-    setTimeout(() => { document.getElementById('perm-gate').style.display='none'; }, 700);
+    const gate = document.getElementById('perm-gate');
+    gate.classList.add('fade');
+    setTimeout(() => { gate.style.display = 'none'; }, 700);
     await startXR8();
   });
 
   window.addEventListener('xrerror', e => {
-    D.log('❌ xrerror: '+JSON.stringify(e.detail), 'err');
+    D.log('❌ xrerror: ' + JSON.stringify(e.detail), 'err');
     document.getElementById('dbg').classList.add('show');
     showSt('❌ AR 引擎錯誤', 10000);
   });
 
-  window.addEventListener('load', () => { preflight(); preloadTargets(); });
+  window.addEventListener('load', () => {
+    preflight();
+    preloadTargets();
+  });
   </script>
 </body>
 </html>
