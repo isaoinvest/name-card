@@ -4,188 +4,953 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <title>ISAO | 沉浸式 AR 名片體驗</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>AR 名片 · MingHsun Li</title>
 
-  <!-- 8th Wall 核心庫與 A-Frame 框架 -->
-  <script src="//cdn.8thwall.com/web/aframe/8frame-1.3.0.min.js"></script>
-  <script src="//cdn.8thwall.com/web/xrextras/xrextras.js"></script>
-  
-  <!-- 替換為您的 8th Wall API Key -->
-  <script async src="//apps.8thwall.com/xrweb?key=YOUR_8THWALL_API_KEY"></script>
+  <!-- ══════════════════════════════════════════════════════
+  ★★★  CONFIG — 在此設定  ★★★
+  ══════════════════════════════════════════════════════ -->
+  <script>
+  const AR_CONFIG = {
+    // ── 圖像目標 JSON（順序決定角色，不依賴檔案內的 .name 欄位）
+    //   index 0 → 名片正面（card）
+    //   index 1 → 名片背面（video）
+    targetJsonPaths: [
+      './image-targets/isaofront.json',   // [0] → card
+      './image-targets/isaoback.json',    // [1] → video
+    ],
+
+    // ── 影片
+    videoSrc: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
+
+    // ── 3D 浣熊 GLTF
+    raccoonSrc: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf',
+
+    // ── 個人資料
+    profile: {
+      photo:  'https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png',
+      name:   'MingHsun Li',
+      title:  'Red Panda Keeper',
+    },
+
+    // ── 聯絡按鈕（3D 可點擊）
+    contacts: [
+      { label:'Website',   icon:'🌐', accent:'#00aaff', url:'https://isaoinvest.com' },
+      { label:'Email',     icon:'✉',  accent:'#00cc88', url:'mailto:isaoinvest@gmail.com' },
+      { label:'Phone',     icon:'☎',  accent:'#ff8800', url:'tel:+886920820259' },
+    ],
+
+    // ── 社群圖示（3D 可點擊）
+    socials: [
+      { label:'LINE',      img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png',        url:'https://line.me/R/ti/p/@722fdkca' },
+      { label:'YouTube',   img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png',     url:'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ' },
+      { label:'Instagram', img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png',   url:'https://www.instagram.com/isaoinvest' },
+      { label:'Facebook',  img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png',    url:'https://www.facebook.com/profile.php?id=61552552833098' },
+    ],
+  };
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <!--
+    ★ data-preload-chunks="slam" 必須保留：
+      xr-slam.js 包含相機畫面 pipeline（frame decoder）。
+      移除此屬性 → 黑屏（即使 disableWorldTracking:true）。
+  -->
+  <script src="./external/xr/xr.js" data-preload-chunks="slam"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    #overlay {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
-      color: white;
-      text-align: center;
-    }
-    .hidden { display: none !important; }
-    button {
-      padding: 15px 40px;
-      font-size: 20px;
-      font-weight: bold;
-      background: #007AFF;
-      color: white;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0,122,255,0.4);
-      transition: transform 0.2s;
-    }
-    button:active { transform: scale(0.95); }
-    h1 { margin-bottom: 10px; letter-spacing: 2px; }
-    p { opacity: 0.8; margin-bottom: 30px; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;
+    -webkit-user-select:none;user-select:none}
+  #renderCanvas{position:fixed!important;top:0!important;left:0!important;
+    width:100vw!important;height:100vh!important;z-index:0;display:block}
+
+  /*
+   * ★ XR8 內部元素用 visibility:hidden（非 display:none）
+   *   iOS Safari 對 display:none 的 <video> 停止解碼 → 黑屏
+   *   visibility:hidden 讓 XR8 相機 video 繼續解碼
+   */
+  [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{
+    visibility:hidden!important;pointer-events:none!important}
+  [class*="watermark"],[id*="watermark"]{display:none!important}
+
+  @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.2}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.12}}
+  @keyframes scan{0%{transform:translateY(0)}50%{transform:translateY(218px)}100%{transform:translateY(0)}}
+  @keyframes pgscan{0%{transform:translateY(0)}50%{transform:translateY(158px)}100%{transform:translateY(0)}}
+  @keyframes popIn{0%{transform:scale(0.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  @keyframes glow{0%,100%{box-shadow:0 0 8px rgba(0,200,255,.3)}50%{box-shadow:0 0 22px rgba(0,200,255,.7)}}
+
+  /* ── Scanning overlay ── */
+  #scan-ov{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:28px;pointer-events:none;opacity:1;transition:opacity .5s}
+  #scan-ov.hidden{opacity:0}
+  .sbox{width:218px;height:218px;position:relative;
+    border:1.5px solid rgba(0,210,255,.32);border-radius:12px;
+    box-shadow:0 0 26px rgba(0,210,255,.1)}
+  .sline{position:absolute;height:2px;width:100%;top:0;
+    background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);
+    animation:scan 2s ease-in-out infinite;box-shadow:0 0 10px rgba(0,238,255,.7)}
+  .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.88);
+    border-style:solid;border-width:0}
+  .c-tl{top:-2px;left:-2px;border-top-width:2.5px;border-left-width:2.5px;border-radius:4px 0 0 0}
+  .c-tr{top:-2px;right:-2px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 4px 0 0}
+  .c-bl{bottom:-2px;left:-2px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 4px}
+  .c-br{bottom:-2px;right:-2px;border-bottom-width:2.5px;border-right-width:2.5px;border-radius:0 0 4px 0}
+  #scan-label{font-family:monospace;font-size:11px;letter-spacing:2.5px;
+    color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
+
+  /* ── Status top bar ── */
+  #status{position:fixed;top:16px;left:50%;transform:translateX(-50%);padding:7px 18px;
+    background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);border-radius:20px;
+    backdrop-filter:blur(10px);font-family:monospace;font-size:11px;
+    color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;
+    white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis}
+  #status.show{opacity:1}
+
+  /* ── Target name display (always visible after load) ── */
+  #target-info{position:fixed;top:14px;left:14px;z-index:100;
+    font-family:monospace;font-size:9px;letter-spacing:1.5px;
+    color:rgba(0,170,255,.55);line-height:1.9;display:none}
+  #target-info.show{display:block}
+  .ti-row{display:flex;align-items:center;gap:6px}
+  .ti-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .ti-dot.card{background:#00aaff}.ti-dot.video{background:#ff8800}.ti-dot.unknown{background:#888}
+
+  /* ── Flash ── */
+  #flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;
+    opacity:0;transition:opacity .6s;
+    background:radial-gradient(circle,rgba(0,210,255,.16),transparent 68%)}
+  #flash.on{opacity:1}
+
+  /* ── Toast（3D 按鈕點擊回饋）── */
+  #toast{position:fixed;bottom:45%;left:50%;transform:translateX(-50%);
+    padding:9px 20px;background:rgba(0,30,90,.92);
+    border:1px solid rgba(0,200,255,.5);border-radius:28px;
+    font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);
+    z-index:200;opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap}
+  #toast.show{opacity:1}
+
+  /* ── 影片控制（背面 target：DOM 面板，簡單可靠）── */
+  #video-panel{position:fixed;bottom:18px;left:50%;
+    transform:translateX(-50%) translateY(20px);
+    z-index:60;opacity:0;transition:opacity .4s,transform .4s;
+    pointer-events:none;white-space:nowrap}
+  #video-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .vp-pill{display:flex;align-items:center;gap:10px;padding:11px 24px;
+    background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.35);border-radius:50px;
+    backdrop-filter:blur(14px);font-family:monospace;font-size:11px;
+    letter-spacing:1.5px;color:rgba(0,200,255,.88);cursor:pointer;
+    -webkit-tap-highlight-color:transparent;animation:glow 2.5s ease-in-out infinite}
+  .vp-pill:active{background:rgba(0,50,130,.6)}
+  #vp-icon{font-size:18px}
+
+  /* ── Screenshot button ── */
+  #snap-btn{position:fixed;bottom:18px;right:18px;z-index:60;
+    width:48px;height:48px;background:rgba(0,8,24,.85);
+    border:1.5px solid rgba(255,200,0,.45);border-radius:50%;
+    display:none;align-items:center;justify-content:center;
+    font-size:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:transform .15s}
+  #snap-btn.show{display:flex}
+  #snap-btn:active{transform:scale(.9)}
+  /* screenshot flash */
+  #snap-flash{position:fixed;top:0;left:0;width:100%;height:100%;
+    background:#fff;z-index:9998;pointer-events:none;opacity:0;transition:opacity .12s}
+  #snap-flash.on{opacity:.75}
+
+  /* ── Debug ── */
+  #dbg{position:fixed;bottom:80px;left:8px;right:8px;max-height:180px;overflow-y:auto;
+    background:rgba(0,0,0,.94);border:1px solid rgba(255,70,70,.3);border-radius:10px;
+    padding:8px;font-family:monospace;font-size:10px;z-index:300;display:none}
+  #dbg.show{display:block}
+  #dbg .ok{color:#88ff88}#dbg .err{color:#ff6666}#dbg .inf{color:#88ccff}
+  #bdbg{position:fixed;bottom:18px;left:18px;z-index:400;width:40px;height:40px;
+    background:rgba(0,8,24,.8);border:1px solid rgba(255,140,0,.3);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;
+    -webkit-tap-highlight-color:transparent}
+
+  /* ── Permission Gate ── */
+  #perm-gate{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;
+    background:linear-gradient(180deg,#000,#020a1c);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:22px;transition:opacity .7s}
+  #perm-gate.fade{opacity:0;pointer-events:none}
+  .pg-logo{font-family:monospace;font-size:10px;letter-spacing:3.5px;
+    color:rgba(0,175,255,.42);text-align:center}
+  .pg-scan{width:158px;height:158px;position:relative;
+    border:1px solid rgba(0,200,255,.18);border-radius:12px}
+  .pg-scan::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(0,220,255,.5),transparent);
+    animation:pgscan 2.5s ease-in-out infinite}
+  .pgcorn{position:absolute;width:16px;height:16px;border-color:rgba(0,200,255,.62);
+    border-style:solid;border-width:0}
+  .pgc-tl{top:-1px;left:-1px;border-top-width:2px;border-left-width:2px}
+  .pgc-tr{top:-1px;right:-1px;border-top-width:2px;border-right-width:2px}
+  .pgc-bl{bottom:-1px;left:-1px;border-bottom-width:2px;border-left-width:2px}
+  .pgc-br{bottom:-1px;right:-1px;border-bottom-width:2px;border-right-width:2px}
+  .pg-ct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+  .pg-icon{font-size:34px;margin-bottom:4px}
+  .pg-ct-txt{font-family:monospace;font-size:9px;letter-spacing:2px;
+    color:rgba(0,200,255,.42);animation:pulse 2s infinite}
+  .pg-title{font-size:22px;font-weight:700;color:#fff;text-align:center;
+    text-shadow:0 0 26px rgba(0,175,255,.4)}
+  .pg-sub{font-size:12px;color:rgba(200,230,255,.48);text-align:center;
+    line-height:1.9;max-width:248px}
+  #btn-start{padding:14px 44px;background:transparent;
+    border:1.5px solid rgba(0,200,255,.62);border-radius:50px;
+    color:rgba(0,218,255,.95);font-size:15px;font-family:monospace;
+    letter-spacing:2.5px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  #btn-start:disabled{opacity:.4;cursor:wait}
+  .pg-note{font-size:10px;color:rgba(140,175,210,.26);text-align:center;
+    max-width:228px;line-height:1.7;font-family:monospace}
   </style>
 </head>
 <body>
 
-  <!-- 入口遮罩層：確保 iOS 音訊/影片權限 -->
-  <div id="overlay">
-    <h1>ISAO AR</h1>
-    <p>準備好體驗未來的名片了嗎？</p>
-    <button id="startBtn">啟動 AR 掃描</button>
+  <!-- Permission Gate -->
+  <div id="perm-gate">
+    <div class="pg-logo">AR BUSINESS CARD</div>
+    <div class="pg-scan">
+      <div class="pgcorn pgc-tl"></div><div class="pgcorn pgc-tr"></div>
+      <div class="pgcorn pgc-bl"></div><div class="pgcorn pgc-br"></div>
+      <div class="pg-ct">
+        <div class="pg-icon">🦝</div>
+        <div class="pg-ct-txt">SCAN TO MEET ME</div>
+      </div>
+    </div>
+    <div class="pg-title">AR 名片體驗</div>
+    <div class="pg-sub">名片<b>正面</b>→ 3D 浣熊 + 聯絡資訊<br>名片<b>背面</b>→ 精彩影片播放</div>
+    <button id="btn-start">▶ 開始體驗</button>
+    <div class="pg-note">點擊後請允許相機權限<br>以啟動 AR 功能</div>
   </div>
 
-  <a-scene
-    xrextras-gesture-detector
-    xrextras-almost-there
-    xrextras-loading
-    xrextras-runtime-error
-    renderer="colorManagement: true; shadowMapEnabled: true; antialias: true"
-    xrweb="disableWorldTracking: false"> 
+  <canvas id="renderCanvas"></canvas>
+  <div id="flash"></div>
+  <div id="snap-flash"></div>
 
-    <a-assets>
-      <!-- 影片資源 -->
-      <video id="videoAsset" 
-             src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" 
-             loop="true" 
-             crossorigin="anonymous" 
-             playsinline></video>
-      
-      <!-- UI 圖示資源 -->
-      <img id="iconPhone" src="https://cdn.pixabay.com/photo/2016/01/10/22/20/phone-1132641_1280.png">
-      <img id="iconWeb" src="https://cdn.pixabay.com/photo/2016/06/13/17/30/mail-1454731_1280.png">
-    </a-assets>
+  <!-- 掃描 UI -->
+  <div id="scan-ov">
+    <div class="sbox">
+      <div class="sline"></div>
+      <div class="corn c-tl"></div><div class="corn c-tr"></div>
+      <div class="corn c-bl"></div><div class="corn c-br"></div>
+    </div>
+    <div id="scan-label">AR READY<br>請對準名片正面或背面</div>
+  </div>
 
-    <a-camera position="0 1.5 0" raycaster="objects: .cantap"></a-camera>
+  <div id="status"></div>
+  <div id="toast"></div>
 
-    <!-- 環境光影 -->
-    <a-light type="directional" intensity="1.2" position="1 2 1"></a-light>
-    <a-light type="ambient" intensity="0.6"></a-light>
+  <!-- Target name info（開發/確認用，可上線後隱藏）-->
+  <div id="target-info">
+    <div class="ti-row"><div class="ti-dot card"></div><span id="ti-card">card: -</span></div>
+    <div class="ti-row"><div class="ti-dot video"></div><span id="ti-video">video: -</span></div>
+  </div>
 
-    <!-- ───────────────────────────────────────────────────────── -->
-    <!-- 正面偵測 (isaofront): AR 名片互動內容 -->
-    <!-- ───────────────────────────────────────────────────────── -->
-    <xrextras-named-image-target name="isaofront">
-      <!-- 容器：當掃描到正面時顯示 -->
-      <a-entity id="frontInterface">
-        
-        <!-- 沉浸式浮空按鈕 1: 撥打電話 (左側) -->
-        <a-entity class="cantap"
-          geometry="primitive: cylinder; radius: 0.12; height: 0.04"
-          material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.2"
-          position="-0.35 0.2 0.15" 
-          rotation="90 0 0"
-          animation="property: position; dir: alternate; dur: 1500; loop: true; to: -0.35 0.25 0.2"
-          onclick="window.location.href='tel:0912345678'">
-          <!-- 按鈕上的 Icon -->
-          <a-image src="#iconPhone" scale="0.15 0.15 0.15" position="0 0.025 0" rotation="-90 0 0"></a-image>
-        </a-entity>
+  <!-- 影片控制 -->
+  <div id="video-panel">
+    <div class="vp-pill" id="vp-play-btn">
+      <span id="vp-icon">▶</span>
+      <span id="vp-txt">點擊 播放影片</span>
+    </div>
+  </div>
 
-        <!-- 沉浸式浮空按鈕 2: 前往網站 (右側) -->
-        <a-entity class="cantap"
-          geometry="primitive: cylinder; radius: 0.12; height: 0.04"
-          material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 0.2"
-          position="0.35 0.2 0.15"
-          rotation="90 0 0"
-          animation="property: position; dir: alternate; dur: 1800; loop: true; to: 0.35 0.25 0.2"
-          onclick="window.open('https://www.isao.com.tw')">
-          <a-image src="#iconWeb" scale="0.15 0.15 0.15" position="0 0.025 0" rotation="-90 0 0"></a-image>
-        </a-entity>
+  <!-- AR 截圖按鈕 -->
+  <div id="snap-btn" title="截圖分享">📷</div>
 
-        <!-- 浮空個人資訊文字 -->
-        <a-text 
-          value="MingHsun Li" 
-          align="center" 
-          position="0 0.6 0.2" 
-          color="#FFFFFF" 
-          width="4"
-          font="https://cdn.aframe.io/fonts/Aileron-Semibold.fnt"></a-text>
-        
-        <a-text 
-          value="Creative Director" 
-          align="center" 
-          position="0 0.45 0.18" 
-          color="#007AFF" 
-          width="2.5"></a-text>
-
-      </a-entity>
-    </xrextras-named-image-target>
-
-    <!-- ───────────────────────────────────────────────────────── -->
-    <!-- 背面偵測 (isaoback): 影片播放內容 -->
-    <!-- ───────────────────────────────────────────────────────── -->
-    <xrextras-named-image-target name="isaoback">
-      <a-entity id="videoContent">
-        <!-- 影片面板：稍微浮起 0.05 避免與實體名片閃爍(Z-fighting) -->
-        <a-video id="arVideoPlayer" 
-                 src="#videoAsset" 
-                 width="1.6" 
-                 height="0.9" 
-                 position="0 0 0.05" 
-                 rotation="0 0 0"></a-video>
-        
-        <!-- 背景裝飾邊框 -->
-        <a-plane width="1.7" height="1.0" position="0 0 0.01" material="color: #000; opacity: 0.8"></a-plane>
-      </a-entity>
-    </xrextras-named-image-target>
-
-  </a-scene>
+  <div id="dbg"></div>
+  <div id="bdbg">🔍</div>
 
   <script>
-    const startBtn = document.getElementById('startBtn');
-    const overlay = document.getElementById('overlay');
-    const video = document.getElementById('videoAsset');
-    
-    // 獲取場景中的目標元素
-    const frontTarget = document.querySelector('[name="isaofront"]');
-    const backTarget = document.querySelector('[name="isaoback"]');
+  // ═══ DEBUG ════════════════════════════════════════════
+  const D = {
+    el: null,
+    init() {
+      this.el = document.getElementById('dbg');
+      document.getElementById('bdbg').addEventListener('click', () => {
+        this.el.classList.toggle('show');
+      });
+      window.addEventListener('error', e => this.log('ERROR: ' + e.message + ' L' + e.lineno, 'err'));
+    },
+    log(m, t = 'inf') {
+      if (!this.el) return;
+      const d = document.createElement('div');
+      d.className = t;
+      d.textContent = new Date().toLocaleTimeString('zh-TW') + ' ' + m;
+      this.el.appendChild(d);
+      this.el.scrollTop = this.el.scrollHeight;
+    }
+  };
+  D.init();
 
-    // 啟動按鈕點擊事件
-    startBtn.addEventListener('click', () => {
-      overlay.classList.add('hidden');
-      
-      // 激活影片（iOS 靜音預播放策略）
-      video.play().then(() => {
-        video.pause();
-        video.currentTime = 0;
-      }).catch(e => console.log("Video init failed:", e));
+  // ═══ UI HELPERS ════════════════════════════════════════
+  let _stT, _toastT;
+  function showSt(msg, dur = 2800) {
+    const e = document.getElementById('status');
+    e.textContent = msg; e.classList.add('show');
+    clearTimeout(_stT); _stT = setTimeout(() => e.classList.remove('show'), dur);
+  }
+  function showToast(msg) {
+    const e = document.getElementById('toast');
+    e.textContent = msg; e.classList.add('show');
+    clearTimeout(_toastT); _toastT = setTimeout(() => e.classList.remove('show'), 1600);
+  }
+  function doFlash() {
+    const f = document.getElementById('flash');
+    f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 700);
+  }
+
+  // ═══ PREFLIGHT ════════════════════════════════════════
+  async function preflight() {
+    for (const [u, l] of [
+      ['./external/xr/xr.js',      'xr.js'],
+      ['./external/xr/xr-slam.js', 'xr-slam.js ← 相機核心（必須存在）'],
+      ...AR_CONFIG.targetJsonPaths.map((p, i) => [p, 'target[' + i + '] ' + p]),
+    ]) {
+      try {
+        const r = await fetch(u, { method: 'HEAD' });
+        D.log((r.ok ? '✅' : '❌') + ' ' + l + (r.ok ? '' : ' HTTP' + r.status), r.ok ? 'ok' : 'err');
+      } catch { D.log('❌ ' + l + ' (網路錯誤)', 'err'); }
+    }
+  }
+
+  // ═══ 3D CANVAS HELPERS ════════════════════════════════
+
+  // 圓角矩形路徑
+  function rrect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
+  // CanvasTexture 平面 mesh
+  // drawFn(ctx, W, H)
+  function mkCanvasMesh(planeW, planeH, texW, texH, drawFn) {
+    const cv = document.createElement('canvas');
+    cv.width = texW; cv.height = texH;
+    const ctx = cv.getContext('2d');
+    drawFn(ctx, texW, texH);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.minFilter = tex.magFilter = THREE.LinearFilter;
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(planeW, planeH),
+      new THREE.MeshBasicMaterial({
+        map: tex, transparent: true, side: THREE.DoubleSide,
+        toneMapped: false, depthWrite: false, depthTest: false
+      })
+    );
+    mesh.renderOrder = 1;
+    return mesh;
+  }
+
+  // 圓形裁切個人照片（async，圖片載入後回調）
+  function mkCirclePhoto(size, url, cb) {
+    const SZ = 256;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = SZ;
+      const ctx = cv.getContext('2d');
+      ctx.beginPath(); ctx.arc(SZ / 2, SZ / 2, SZ / 2 - 4, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, 0, 0, SZ, SZ);
+      // 外圈
+      ctx.beginPath(); ctx.arc(SZ / 2, SZ / 2, SZ / 2 - 4, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,190,255,0.8)'; ctx.lineWidth = 7;
+      ctx.shadowColor = 'rgba(0,200,255,0.5)'; ctx.shadowBlur = 12;
+      ctx.stroke();
+      const tex = new THREE.CanvasTexture(cv);
+      tex.minFilter = tex.magFilter = THREE.LinearFilter;
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(size, size),
+        new THREE.MeshBasicMaterial({
+          map: tex, transparent: true, side: THREE.DoubleSide,
+          toneMapped: false, depthWrite: false, depthTest: false
+        })
+      );
+      mesh.renderOrder = 2;
+      cb(mesh);
+    };
+    img.onerror = () => D.log('❌ 頭像載入失敗', 'err');
+    img.src = url;
+  }
+
+  // ═══ BUILD 3D CARD CONTENT ═══════════════════════════
+  //
+  // 所有元素貼在 cardGroup 子層。
+  // XR8 image tracking scale=1 → 目標寬度=1個 world unit。
+  // 名片 85.6×54mm → aspect ≈ 1.585：
+  //   x range [-0.5, +0.5]，y range [-0.315, +0.315]
+  //
+  // Z offset：z=0.03~0.08 讓 3D 元素浮在名片表面上方
+  // ─────────────────────────────────────────────────────
+  function buildCardContent(group, interactables) {
+    const Z  = 0.06;   // 主要內容 z-offset（浮在名片上方）
+    const ZB = 0.03;   // 背景面板更深一點
+
+    // ① 半透明背景面板（涵蓋整個名片+延伸區域）
+    const bg = mkCanvasMesh(1.02, 0.82, 512, 410, (ctx, W, H) => {
+      ctx.clearRect(0, 0, W, H);
+      rrect(ctx, 2, 2, W - 4, H - 4, 28);
+      ctx.fillStyle = 'rgba(0,6,22,0.86)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(0,180,255,0.4)'; ctx.lineWidth = 2; ctx.stroke();
+      // 頂部光條
+      const g = ctx.createLinearGradient(0, 0, W, 0);
+      g.addColorStop(0, 'rgba(0,170,255,0)');
+      g.addColorStop(0.35, 'rgba(0,210,255,0.7)');
+      g.addColorStop(0.65, 'rgba(0,210,255,0.7)');
+      g.addColorStop(1, 'rgba(0,170,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(2, 2, W - 4, 2);
+    });
+    bg.position.set(0, 0, ZB);
+    group.add(bg);
+
+    // ② 姓名
+    const nameMesh = mkCanvasMesh(0.46, 0.085, 512, 96, (ctx, W, H) => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.shadowColor = 'rgba(0,210,255,0.65)'; ctx.shadowBlur = 16;
+      ctx.fillStyle = 'rgba(228,248,255,1)';
+      ctx.font = `bold ${Math.round(H * 0.60)}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(AR_CONFIG.profile.name, W / 2, H / 2);
+    });
+    nameMesh.position.set(0.25, 0.10, Z);
+    group.add(nameMesh);
+
+    // ③ 職稱
+    const titleMesh = mkCanvasMesh(0.44, 0.052, 512, 56, (ctx, W, H) => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(0,175,255,0.85)';
+      ctx.font = `${Math.round(H * 0.55)}px monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(AR_CONFIG.profile.title.toUpperCase(), W / 2, H / 2);
+    });
+    titleMesh.position.set(0.25, 0.025, Z);
+    group.add(titleMesh);
+
+    // ④ 分隔線
+    const div = mkCanvasMesh(0.88, 0.005, 256, 3, (ctx, W, H) => {
+      const g = ctx.createLinearGradient(0, 0, W, 0);
+      g.addColorStop(0, 'rgba(0,190,255,0)');
+      g.addColorStop(0.3, 'rgba(0,190,255,0.45)');
+      g.addColorStop(0.7, 'rgba(0,190,255,0.45)');
+      g.addColorStop(1, 'rgba(0,190,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    });
+    div.position.set(0, -0.06, Z);
+    group.add(div);
+
+    // ⑤ 聯絡按鈕（3 rows，可點擊）
+    AR_CONFIG.contacts.forEach((c, i) => {
+      const btn = mkCanvasMesh(0.86, 0.098, 512, 58, (ctx, W, H) => {
+        ctx.clearRect(0, 0, W, H);
+        // 背景
+        rrect(ctx, 1, 1, W - 2, H - 2, H * 0.3);
+        ctx.fillStyle = 'rgba(0,18,50,0.78)'; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,150,255,0.18)'; ctx.lineWidth = 1.2; ctx.stroke();
+        // 左側色彩條
+        rrect(ctx, 1, 1, 6, H - 2, 3);
+        ctx.fillStyle = c.accent; ctx.fill();
+        // Icon
+        ctx.fillStyle = 'rgba(218,244,255,0.95)';
+        ctx.font = `${Math.round(H * 0.52)}px sans-serif`;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(c.icon, H * 0.44, H * 0.5);
+        // Label
+        ctx.font = `${Math.round(H * 0.38)}px sans-serif`;
+        ctx.fillStyle = 'rgba(185,228,255,0.92)';
+        ctx.fillText(c.label, H * 1.25, H * 0.5);
+        // Arrow
+        ctx.font = `${Math.round(H * 0.30)}px monospace`;
+        ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(0,155,255,0.38)';
+        ctx.fillText('›', W - H * 0.35, H * 0.5);
+      });
+      btn.position.set(-0.01, -0.155 - i * 0.115, Z);
+      group.add(btn);
+      interactables.push({ mesh: btn, url: c.url, label: c.label });
     });
 
-    // 背面影片控制邏輯
-    backTarget.addEventListener('xrimagefound', () => {
-      console.log('✅ 掃描到背面 (isaoback)，開始播放影片');
-      video.play();
+    // ⑥ 操作提示
+    const hint = mkCanvasMesh(0.56, 0.032, 512, 28, (ctx, W, H) => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(0,148,255,0.35)';
+      ctx.font = `${Math.round(H * 0.6)}px monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('▲ TAP BUTTON TO CONNECT ▲', W / 2, H / 2);
+    });
+    hint.position.set(-0.01, -0.495, Z);
+    group.add(hint);
+
+    // ⑦ 社群圖示 × 4（async image load，先用色塊佔位）
+    const socXs = [-0.29, -0.1, 0.09, 0.28];
+    AR_CONFIG.socials.forEach((s, i) => {
+      // 佔位色塊
+      const fb = mkCanvasMesh(0.135, 0.135, 128, 128, (ctx, W, H) => {
+        rrect(ctx, 2, 2, W - 4, H - 4, 16);
+        ctx.fillStyle = 'rgba(0,20,55,0.82)'; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,140,255,0.28)'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = 'rgba(0,175,255,0.75)';
+        ctx.font = `bold ${Math.round(W * 0.42)}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(s.label[0], W / 2, H / 2);
+      });
+      fb.position.set(socXs[i], -0.59, Z);
+      group.add(fb);
+      interactables.push({ mesh: fb, url: s.url, label: s.label });
+
+      // 非同步載入實際圖示
+      const loader = new THREE.TextureLoader();
+      loader.crossOrigin = 'anonymous';
+      loader.load(s.img, tex => {
+        tex.minFilter = tex.magFilter = THREE.LinearFilter;
+        fb.material.map = tex;
+        fb.material.color.set(0xffffff);
+        fb.material.needsUpdate = true;
+      });
     });
 
-    backTarget.addEventListener('xrimagelost', () => {
-      console.log('❌ 失去背面追蹤，暫停影片');
-      video.pause();
+    // ⑧ 個人照片（圓形，async）
+    mkCirclePhoto(0.22, AR_CONFIG.profile.photo, mesh => {
+      mesh.position.set(0.28, 0.22, Z + 0.005);
+      group.add(mesh);
+    });
+  }
+
+  // ═══ RACCOON LOADER ════════════════════════════════════
+  function loadRaccoon(group, onLoaded) {
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      AR_CONFIG.raccoonSrc,
+      gltf => {
+        const model = gltf.scene;
+        const mixer = new THREE.AnimationMixer(model);
+        gltf.animations.forEach(clip => mixer.clipAction(clip).play());
+        model.scale.setScalar(0.09);
+        model.position.set(-0.33, -0.14, 0);
+        group.add(model);
+        D.log('✅ 浣熊載入 · 動畫×' + gltf.animations.length, 'ok');
+        onLoaded({ model, mixer });
+      },
+      undefined,
+      err => D.log('❌ GLTF: ' + (err.message || err), 'err')
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  AR MODULE
+  // ═══════════════════════════════════════════════════════
+  function mkARModule(allTargetData) {
+    // ══════════════════════════════════════════════════
+    // ★★★  ROOT CAUSE FIX  ★★★
+    //
+    // 舊做法（有 bug）：
+    //   const cardName = allTargetData[0]?.name  ← index 0
+    //   if (detail.name === cardName) → 名片
+    //   問題：若 isaofront.json 載入失敗，filter後 index 0 = isaoback
+    //         且 .name 欄位由 CLI 編譯時決定，不一定等於 'isaofront'
+    //
+    // 新做法（正確）：
+    //   用 targetRoleMap (name → role) 由「實際載入的 JSON .name」建立
+    //   第 0 個 JSON（isaofront.json）→ role 'card'
+    //   第 1 個 JSON（isaoback.json） → role 'video'
+    //   完全不假設 .name 欄位的字串值
+    // ══════════════════════════════════════════════════
+
+    const targetRoleMap = new Map();  // actualJsonName → 'card' | 'video'
+    const ROLES = ['card', 'video'];
+    allTargetData.forEach((d, i) => {
+      if (d && ROLES[i]) {
+        targetRoleMap.set(d.name, ROLES[i]);
+        D.log(`★ targetRoleMap["${d.name}"] → ${ROLES[i]}  (from ${AR_CONFIG.targetJsonPaths[i]})`, 'ok');
+        // 顯示在 UI 上（讓使用者可確認）
+        const el = document.getElementById('ti-' + ROLES[i]);
+        if (el) el.textContent = ROLES[i] + ': "' + d.name + '"';
+      }
+    });
+    document.getElementById('target-info').classList.add('show');
+
+    function roleOf(name) {
+      // 嚴格比對
+      if (targetRoleMap.has(name)) return targetRoleMap.get(name);
+      // 寬鬆比對（大小寫不敏感）
+      for (const [k, v] of targetRoleMap.entries()) {
+        if (k.toLowerCase() === name.toLowerCase()) return v;
+      }
+      return null;
+    }
+
+    // 3D 物件
+    let cardGroup, raccoonData = null;
+    let videoGroup, videoMesh, videoEl, videoTex;
+    let videoPlaying = false, videoHasInteracted = false;
+
+    // Raycaster（3D 按鈕點擊）
+    const interactables = [];
+    const raycaster     = new THREE.Raycaster();
+    let   _camera       = null;  // 在 onStart 儲存
+
+    const clock   = new THREE.Clock();
+    const scanEl  = document.getElementById('scan-ov');
+    const vpPanel = document.getElementById('video-panel');
+    const vpIcon  = document.getElementById('vp-icon');
+    const vpTxt   = document.getElementById('vp-txt');
+    const snapBtn = document.getElementById('snap-btn');
+    const S = { cardVis: false, videoVis: false };
+
+    // ── 截圖功能（8th Wall OSS: 離屏 canvas 複製）────
+    let _renderer = null;
+    let _pendingSnap = false;
+    function triggerSnap() {
+      document.getElementById('snap-flash').classList.add('on');
+      setTimeout(() => document.getElementById('snap-flash').classList.remove('on'), 280);
+      _pendingSnap = true;
+    }
+    function doSnap() {
+      if (!_pendingSnap || !_renderer) return;
+      _pendingSnap = false;
+      try {
+        const src  = _renderer.domElement;
+        const oc   = document.createElement('canvas');
+        oc.width   = src.width; oc.height = src.height;
+        oc.getContext('2d').drawImage(src, 0, 0);
+        oc.toBlob(blob => {
+          const file = new File([blob], 'ar-card.jpg', { type: 'image/jpeg' });
+          if (navigator.share && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: 'AR 名片', text: '用 AR 掃描我的名片！' })
+              .then(() => showToast('✅ 已分享'))
+              .catch(() => {});
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'ar-card-' + Date.now() + '.jpg';
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('✅ 截圖已儲存');
+          }
+        }, 'image/jpeg', 0.92);
+      } catch (e) { D.log('截圖失敗: ' + e.message, 'err'); }
+    }
+    snapBtn.addEventListener('click', triggerSnap);
+
+    // ── 3D raycaster: touch/click on window ───────────
+    // ★ 附在 window 而非 canvas：避免 iOS 上 canvas touch 和 XR8 內部衝突
+    function handleTap(cx, cy) {
+      if (!S.cardVis || !_camera || interactables.length === 0) return;
+      const canvas = document.getElementById('renderCanvas');
+      const rect   = canvas.getBoundingClientRect();
+      const ndcX   = ((cx - rect.left) / rect.width)  * 2 - 1;
+      const ndcY   = -((cy - rect.top)  / rect.height) * 2 + 1;
+      raycaster.setFromCamera({ x: ndcX, y: ndcY }, _camera);
+      const hits = raycaster.intersectObjects(interactables.map(i => i.mesh), false);
+      if (hits.length === 0) return;
+      const item = interactables.find(i => i.mesh === hits[0].object);
+      if (!item) return;
+      D.log('3D tap → ' + item.label, 'ok');
+      // 視覺回饋
+      item.mesh.scale.set(1.12, 1.12, 1.12);
+      setTimeout(() => item.mesh.scale.set(1, 1, 1), 180);
+      showToast('▶ ' + item.label);
+      setTimeout(() => {
+        if (item.url.startsWith('http')) window.open(item.url, '_blank', 'noopener');
+        else window.location.href = item.url;
+      }, 60);
+    }
+    window.addEventListener('touchend', e => {
+      if (e.target.id === 'renderCanvas' || e.target.tagName === 'CANVAS') {
+        const t = e.changedTouches[0];
+        if (t) handleTap(t.clientX, t.clientY);
+      }
+    }, { passive: true });
+    window.addEventListener('click', e => {
+      if (e.target.id === 'renderCanvas' || e.target.tagName === 'CANVAS') {
+        handleTap(e.clientX, e.clientY);
+      }
     });
 
-    // 正面追蹤日誌
-    frontTarget.addEventListener('xrimagefound', () => {
-      console.log('✅ 掃描到正面 (isaofront)，顯示互動名片');
+    // ── 影片面板 ──────────────────────────────────────
+    document.getElementById('vp-play-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      if (!videoEl) return;
+      if (!videoHasInteracted) { videoEl.muted = false; videoHasInteracted = true; }
+      if (videoPlaying) {
+        videoEl.pause(); videoPlaying = false;
+        vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
+      } else {
+        videoEl.play().then(() => {
+          videoPlaying = true;
+          vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片';
+        }).catch(err => D.log('影片: ' + err.message, 'err'));
+      }
     });
 
+    function applyPose(group, detail) {
+      const { position: p, rotation: r, scale: s } = detail;
+      group.position.set(p.x, p.y, p.z);
+      group.quaternion.set(r.x, r.y, r.z, r.w);
+      group.scale.setScalar(s);
+    }
+
+    function onFound({ detail }) {
+      const name = detail.name;
+      const role = roleOf(name);
+      // ★ 所有 imagefound 事件都記錄，包含無法路由的
+      D.log('✅ imagefound name="' + name + '" role=' + (role || 'UNKNOWN'), role ? 'ok' : 'err');
+
+      if (role === 'card') {
+        applyPose(cardGroup, detail);
+        cardGroup.visible = true; S.cardVis = true;
+        scanEl.classList.add('hidden');
+        snapBtn.classList.add('show');
+        doFlash();
+        showSt('🦝 名片正面！點擊 3D 按鈕聯絡', 4000);
+      } else if (role === 'video') {
+        applyPose(videoGroup, detail);
+        videoGroup.visible = true; S.videoVis = true;
+        scanEl.classList.add('hidden');
+        vpPanel.classList.add('show');
+        snapBtn.classList.add('show');
+        doFlash();
+        if (!videoHasInteracted && videoEl) {
+          videoEl.muted = true; videoEl.currentTime = 0;
+          videoEl.play().then(() => {
+            videoPlaying = true;
+            vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片';
+          }).catch(() => {});
+        }
+        showSt('🎬 名片背面！影片播放中');
+      } else {
+        D.log('⚠ 未知 target name="' + name + '" — 請確認 JSON 已正確編譯', 'err');
+        showSt('⚠ 偵測到未知目標: ' + name, 4000);
+      }
+    }
+
+    function onUpdated({ detail }) {
+      const name = detail.name;
+      const role = roleOf(name);
+      if (role === 'card') {
+        applyPose(cardGroup, detail);
+        if (!S.cardVis) { cardGroup.visible = true; S.cardVis = true; }
+      } else if (role === 'video') {
+        applyPose(videoGroup, detail);
+        if (!S.videoVis) { videoGroup.visible = true; S.videoVis = true; }
+      }
+    }
+
+    function onLost({ detail }) {
+      const name = detail?.name || '';
+      const role = roleOf(name);
+      D.log('📍 imagelost: "' + name + '" role=' + (role || '?'), 'inf');
+      if (role === 'card') {
+        S.cardVis = false; cardGroup.visible = false;
+        // 3D 內容消失，但截圖按鈕留著
+      } else if (role === 'video') {
+        S.videoVis = false; videoGroup.visible = false;
+        vpPanel.classList.remove('show');
+        if (videoEl) { videoEl.pause(); videoPlaying = false; }
+        vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
+      }
+      if (!S.cardVis && !S.videoVis) {
+        scanEl.classList.remove('hidden');
+        snapBtn.classList.remove('show');
+        showSt('🔍 請對準名片正面或背面');
+      }
+    }
+
+    return {
+      name: 'ar-card',
+
+      onStart() {
+        const { scene, renderer, camera } = XR8.Threejs.xrScene();
+        _camera   = camera;
+        _renderer = renderer;
+
+        // ★ 關鍵修復：禁止 Three.js 清除相機畫面
+        renderer.autoClear = false;
+        renderer.sortObjects = true;  // 確保 depthTest:false mesh 正確排序
+
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight, false);
+        renderer.domElement.style.cssText =
+          'position:fixed!important;top:0!important;left:0!important;' +
+          'width:100vw!important;height:100vh!important;z-index:0!important;';
+
+        // 光源
+        scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+        const dir = new THREE.DirectionalLight(0xffffff, 0.75);
+        dir.position.set(0.5, 2, 1.5); scene.add(dir);
+
+        // ── 名片正面 Group ────────────────────────────
+        cardGroup = new THREE.Group();
+        cardGroup.visible = false;
+        scene.add(cardGroup);
+        loadRaccoon(cardGroup, data => { raccoonData = data; });
+        buildCardContent(cardGroup, interactables);
+        D.log('✅ cardGroup 建立完成，interactables=' + interactables.length, 'ok');
+
+        // ── 名片背面 Group（影片平面）─────────────────
+        videoGroup = new THREE.Group();
+        videoGroup.visible = false;
+        scene.add(videoGroup);
+
+        videoEl = document.createElement('video');
+        videoEl.src = AR_CONFIG.videoSrc;
+        videoEl.loop = true; videoEl.muted = true;
+        videoEl.playsInline = true; videoEl.crossOrigin = 'anonymous';
+        videoEl.setAttribute('webkit-playsinline', 'true');
+
+        videoTex = new THREE.VideoTexture(videoEl);
+        videoTex.minFilter = videoTex.magFilter = THREE.LinearFilter;
+        videoTex.format = THREE.RGBAFormat;
+
+        // 16:9 影片平面，寬度=1.5（略大於背面 target）
+        videoMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.5, 1.5 * (9 / 16)),
+          new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide, toneMapped: false })
+        );
+        videoGroup.add(videoMesh);
+
+        D.log('✅ Scene 準備完成 — 等待目標', 'ok');
+        clock.start();
+        setTimeout(() => showSt('請對準名片正面（浣熊）或背面（影片）', 4000), 900);
+      },
+
+      onUpdate() {
+        const delta = clock.getDelta();
+        // 浣熊動畫
+        if (raccoonData?.mixer) raccoonData.mixer.update(delta);
+        // 浣熊浮動正弦波
+        if (raccoonData?.model && cardGroup.visible) {
+          raccoonData.model.position.y = -0.14 + Math.sin(clock.elapsedTime * 1.2) * 0.022;
+        }
+        // 截圖
+        doSnap();
+      },
+
+      listeners: [
+        { event: 'reality.imagefound',   process: onFound   },
+        { event: 'reality.imageupdated', process: onUpdated },
+        { event: 'reality.imagelost',    process: onLost    },
+      ],
+
+      onAttach() {
+        window.addEventListener('resize', () => {
+          if (!_renderer) return;
+          _renderer.setSize(window.innerWidth, window.innerHeight, false);
+        });
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden && videoEl) { videoEl.pause(); videoPlaying = false; }
+          else if (S.videoVis && videoPlaying && videoEl) videoEl.play().catch(() => {});
+        });
+      }
+    };
+  }
+
+  // ═══ MAIN — Permission Gate ════════════════════════════
+  let _xrReady = false;
+  let _allTargetData = null;  // 依 targetJsonPaths 順序載入，null=失敗
+
+  window.addEventListener('xrloaded', () => {
+    _xrReady = true;
+    D.log('✅ xrloaded', 'ok');
+  });
+
+  async function preloadTargets() {
+    const data = [];
+    for (const [i, path] of AR_CONFIG.targetJsonPaths.entries()) {
+      try {
+        const r = await fetch(path);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        data.push(d);
+        D.log(`✅ [${i}] "${d.name}" 載入完成 (${path})`, 'ok');
+      } catch (e) {
+        D.log(`❌ [${i}] 載入失敗: ${e.message} (${path})`, 'err');
+        // ★ push null 保持 index 對應關係（role 由 index 決定）
+        // mkARModule 用實際 .name 值建 map，null 條目被跳過
+        data.push(null);
+      }
+    }
+    const valid = data.filter(Boolean);
+    if (valid.length === 0) {
+      document.getElementById('dbg').classList.add('show');
+      showSt('❌ 所有目標 JSON 載入失敗，請確認路徑', 8000);
+    } else if (valid.length < AR_CONFIG.targetJsonPaths.length) {
+      D.log(`⚠ 部分目標未載入 (${valid.length}/${AR_CONFIG.targetJsonPaths.length})`, 'err');
+      document.getElementById('dbg').classList.add('show');
+    }
+    // ★ 傳入 valid（已過濾 null），但 targetRoleMap 以 index 對應 role
+    // 這裡改為傳完整 data，讓 mkARModule 能正確對應 index 和 role
+    // → 但 imageTargetData 只接受非 null，所以傳 valid
+    // ★ 重要：valid 的 index 不再對應 role！
+    // 修正：同時傳 data（含 null）供 role mapping 使用
+    _allTargetData = { valid, indexed: data };
+  }
+
+  async function requestMotionPermissions() {
+    for (const E of [DeviceMotionEvent, DeviceOrientationEvent]) {
+      if (typeof E !== 'undefined' && typeof E.requestPermission === 'function') {
+        try { await E.requestPermission(); } catch {}
+      }
+    }
+  }
+
+  async function startXR8() {
+    showSt('AR 初始化中…', 4000);
+    // 等待 target JSON
+    let w = 0;
+    while (!_allTargetData && w < 10000) { await new Promise(r => setTimeout(r, 200)); w += 200; }
+    if (!_allTargetData || _allTargetData.valid.length === 0) {
+      showSt('❌ 目標資料未就緒', 8000); return;
+    }
+    // 等待 xr.js
+    w = 0;
+    while (!_xrReady && w < 12000) { await new Promise(r => setTimeout(r, 200)); w += 200; }
+    if (!_xrReady) { showSt('❌ AR 引擎未就緒', 8000); return; }
+
+    const validTargets = _allTargetData.valid;
+    const indexedData  = _allTargetData.indexed;  // 含 null，供 role mapping
+
+    XR8.XrController.configure({
+      disableWorldTracking: true,
+      imageTargetData: validTargets,  // 傳有效 JSON 給 XR8
+    });
+    D.log('XrController configured: ' + validTargets.length + ' targets', 'ok');
+
+    XR8.addCameraPipelineModules([
+      XR8.GlTextureRenderer.pipelineModule(),
+      XR8.Threejs.pipelineModule(),
+      XR8.XrController.pipelineModule(),
+      mkARModule(indexedData),  // ★ 傳 indexed（含 null 保持 index）
+    ]);
+    XR8.run({ canvas: document.getElementById('renderCanvas') });
+    D.log('✅ XR8.run()', 'ok');
+  }
+
+  document.getElementById('btn-start').addEventListener('click', async function () {
+    this.disabled = true; this.textContent = '授權中…';
+    await requestMotionPermissions();
+    const gate = document.getElementById('perm-gate');
+    gate.classList.add('fade');
+    setTimeout(() => { gate.style.display = 'none'; }, 700);
+    await startXR8();
+  });
+
+  window.addEventListener('xrerror', e => {
+    D.log('❌ xrerror: ' + JSON.stringify(e.detail), 'err');
+    document.getElementById('dbg').classList.add('show');
+    showSt('❌ AR 引擎錯誤', 10000);
+  });
+
+  window.addEventListener('load', () => { preflight(); preloadTargets(); });
   </script>
 </body>
 </html>
