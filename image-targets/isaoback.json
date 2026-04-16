@@ -1,0 +1,23 @@
+{
+  "imagePath": "image-targets/isaoback_luminance.png",
+  "metadata": null,
+  "name": "isaoback",
+  "type": "PLANAR",
+  "properties": {
+    "left": 0,
+    "top": 83,
+    "width": 638,
+    "height": 851,
+    "isRotated": true,
+    "originalWidth": 638,
+    "originalHeight": 1016
+  },
+  "resources": {
+    "originalImage": "isaoback_original.png",
+    "croppedImage": "isaoback_cropped.png",
+    "thumbnailImage": "isaoback_thumbnail.png",
+    "luminanceImage": "isaoback_luminance.png"
+  },
+  "created": 1775487613412,
+  "updated": 1775487613412
+}
