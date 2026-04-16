@@ -1,202 +1,730 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<title>AR Business Card FINAL</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>AR 名片 · MingHsun Li</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="./external/xr/xr.js"></script>
+  <!-- ══════════════════════════════════════════════
+       ★★★  CONFIG  ★★★
+  ══════════════════════════════════════════════ -->
+  <script>
+  const AR_CONFIG = {
+    targetJsonPaths: [
+      './image-targets/isaofront.json',   // [0] → 正面 card
+      './image-targets/isaoback.json',    // [1] → 背面 video
+    ],
+    videoSrc: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
+    raccoonSrc: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf',
+    profile: {
+      photo: 'https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png',
+      name:  'MingHsun Li',
+      title: 'Red Panda Keeper',
+    },
+    contacts: [
+      { label:'Website', icon:'🌐', accent:'#00aaff', url:'https://isaoinvest.com' },
+      { label:'Email',   icon:'✉',  accent:'#00cc88', url:'mailto:isaoinvest@gmail.com' },
+      { label:'Phone',   icon:'☎',  accent:'#ff8800', url:'tel:+886920820259' },
+    ],
+    socials: [
+      { label:'LINE',      img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png',      url:'https://line.me/R/ti/p/@722fdkca' },
+      { label:'YouTube',   img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png',   url:'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ' },
+      { label:'Instagram', img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png', url:'https://www.instagram.com/isaoinvest' },
+      { label:'Facebook',  img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png',  url:'https://www.facebook.com/profile.php?id=61552552833098' },
+    ],
+  };
+  </script>
 
-<style>
-body{margin:0;background:#000;overflow:hidden}
-#renderCanvas{width:100vw;height:100vh}
-#ui{
-  position:fixed;
-  bottom:20px;
-  left:50%;
-  transform:translateX(-50%);
-  color:#0ff;
-  font-family:monospace;
-}
-</style>
-</head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <!-- data-preload-chunks="slam" 必須保留：xr-slam.js 含相機 pipeline，移除→黑屏 -->
+  <script src="./external/xr/xr.js" data-preload-chunks="slam"></script>
 
-<body>
+  <style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;
+    touch-action:none;-webkit-user-select:none;user-select:none}
+  #renderCanvas{position:fixed!important;top:0!important;left:0!important;
+    width:100vw!important;height:100vh!important;z-index:0;display:block}
+  /* XR8 內部元素 visibility:hidden（非 display:none）—— iOS Safari display:none 停止 video 解碼→黑屏 */
+  [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{
+    visibility:hidden!important;pointer-events:none!important}
+  [class*="watermark"],[id*="watermark"]{display:none!important}
 
-<canvas id="renderCanvas"></canvas>
-<div id="ui">點擊畫面可互動</div>
+  @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.2}}
+  @keyframes scan{0%{transform:translateY(0)}50%{transform:translateY(216px)}100%{transform:translateY(0)}}
+  @keyframes float3d{0%,100%{transform:translateY(0px) rotateX(0deg)}
+    50%{transform:translateY(-8px) rotateX(2deg)}}
+  @keyframes glow{0%,100%{box-shadow:0 0 12px rgba(0,180,255,.4),0 8px 32px rgba(0,100,200,.3)}
+    50%{box-shadow:0 0 28px rgba(0,210,255,.75),0 12px 48px rgba(0,140,255,.5)}}
+  @keyframes cardSlide{from{opacity:0;transform:translateY(24px) scale(.96)}
+    to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes iconPop{from{opacity:0;transform:scale(.5) rotateY(-30deg)}
+    to{opacity:1;transform:scale(1) rotateY(0deg)}}
+  @keyframes scanline{0%,100%{opacity:0}5%,95%{opacity:1}}
 
-<script>
+  /* ─── 掃描 UI ─── */
+  #scan-ov{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:22px;pointer-events:none;opacity:1;transition:opacity .5s}
+  #scan-ov.hidden{opacity:0}
+  .sbox{width:218px;height:218px;position:relative;
+    border:1.5px solid rgba(0,210,255,.35);border-radius:12px}
+  .sline{position:absolute;height:2px;width:100%;top:0;
+    background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);
+    animation:scan 2s ease-in-out infinite}
+  .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.9);border-style:solid;border-width:0}
+  .c-tl{top:-2px;left:-2px;border-top-width:2.5px;border-left-width:2.5px;border-radius:4px 0 0 0}
+  .c-tr{top:-2px;right:-2px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 4px 0 0}
+  .c-bl{bottom:-2px;left:-2px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 4px}
+  .c-br{bottom:-2px;right:-2px;border-bottom-width:2.5px;border-right-width:2.5px;border-radius:0 0 4px 0}
+  #scan-label{font-family:monospace;font-size:11px;letter-spacing:2px;
+    color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
 
-// ===== CONFIG =====
-const CONFIG = {
-  targets: './image-targets/targets.json',
-  video: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
-  model: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf'
-};
+  /* ─── Status ─── */
+  #status{position:fixed;top:14px;left:50%;transform:translateX(-50%);
+    padding:7px 18px;background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);
+    border-radius:20px;backdrop-filter:blur(10px);font-family:monospace;font-size:11px;
+    color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;
+    white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+  #status.show{opacity:1}
 
-// ===== GLOBAL =====
-let camera, scene;
-let raycaster = new THREE.Raycaster();
-let interactables = [];
-let videoEl, videoTex, videoMesh;
-let mixer;
+  /* ─── Flash ─── */
+  #flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;
+    opacity:0;transition:opacity .6s;
+    background:radial-gradient(circle,rgba(0,210,255,.15),transparent 68%)}
+  #flash.on{opacity:1}
 
-// ===== UI =====
-function makeButton(text, url, y){
-  const c = document.createElement('canvas');
-  c.width=512; c.height=128;
-  const ctx = c.getContext('2d');
+  /* ─── Toast ─── */
+  #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    padding:9px 22px;background:rgba(0,30,90,.94);border:1px solid rgba(0,200,255,.5);
+    border-radius:28px;font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);
+    z-index:200;opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap}
+  #toast.show{opacity:1}
 
-  ctx.fillStyle="rgba(0,0,80,0.8)";
-  ctx.fillRect(0,0,512,128);
+  /* ─── 影片控制 ─── */
+  #video-panel{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+    z-index:60;opacity:0;transition:opacity .4s,transform .4s;
+    pointer-events:none;white-space:nowrap}
+  #video-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .vp-pill{display:flex;align-items:center;gap:10px;padding:11px 22px;
+    background:rgba(0,6,22,.92);border:1px solid rgba(0,175,255,.35);border-radius:50px;
+    backdrop-filter:blur(14px);font-family:monospace;font-size:11px;
+    letter-spacing:1.5px;color:rgba(0,200,255,.88);cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  .vp-pill:active{background:rgba(0,50,130,.6)}
+  #vp-icon{font-size:18px}
 
-  ctx.fillStyle="#0ff";
-  ctx.font="40px sans-serif";
-  ctx.fillText(text,30,70);
+  /* ─── 底部控制列（簡化版，無偵錯）─── */
+  .btn-bar{position:fixed;bottom:0;left:0;right:0;height:64px;z-index:600;
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    background:rgba(0,4,14,.96);border-top:1px solid rgba(0,150,255,.18)}
+  .bb{height:40px;padding:0 18px;background:rgba(0,20,60,.8);
+    border:1px solid rgba(0,150,255,.35);border-radius:20px;
+    font-family:monospace;font-size:11px;color:rgba(0,200,255,.9);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+    display:flex;align-items:center;gap:6px;letter-spacing:.5px}
+  .bb:active{background:rgba(0,80,200,.5);border-color:rgba(0,220,255,.8)}
+  .bb.active{background:rgba(0,60,160,.6);border-color:rgba(0,220,255,.7)}
 
-  const tex = new THREE.CanvasTexture(c);
+  /* ════════════════════════════════════════════════
+     ★★★  3D 懸浮名片面板（現在會跟隨 isaofront 真實移動） ★★★
+     - 改用 Three.js 3D anchor + 投影到螢幕座標
+     - 面板會立體浮動在真實環境中，隨名片正面一起平移、旋轉
+     - 保留原本的 CSS 3D 透視與按鈕立體感
+  ════════════════════════════════════════════════ */
+  #card-3d-panel{
+    position:fixed;top:0;left:0;
+    z-index:55;opacity:0;pointer-events:none;
+    transition:opacity .5s;
+    perspective:600px;
+    perspective-origin:50% 80%;
+  }
+  #card-3d-panel.show{opacity:1;pointer-events:auto}
 
-  const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.8,0.2),
-    new THREE.MeshBasicMaterial({map:tex,transparent:true})
-  );
-
-  mesh.position.set(0,y,0.1);
-  interactables.push({mesh,url});
-  return mesh;
-}
-
-// ===== AR MODULE =====
-function arModule(){
-
-  let group;
-
-  function applyPose(g, d){
-    g.position.set(d.position.x,d.position.y,d.position.z);
-    g.quaternion.set(d.rotation.x,d.rotation.y,d.rotation.z,d.rotation.w);
-    g.scale.setScalar(d.scale);
+  .c3d-inner{
+    display:flex;flex-direction:column;align-items:center;gap:0;
+    padding:0 16px 8px;
+    transform-style:preserve-3d;
   }
 
-  function handleClick(x,y){
-    const rect = renderCanvas.getBoundingClientRect();
-    const nx = (x/rect.width)*2-1;
-    const ny = -(y/rect.height)*2+1;
+  /* 個人資料列 */
+  .c3d-profile{
+    display:flex;align-items:center;gap:14px;
+    padding:12px 20px 8px;width:100%;max-width:380px;
+    animation:cardSlide .5s ease both;
+  }
+  .c3d-photo{width:52px;height:52px;border-radius:50%;
+    border:2.5px solid rgba(0,200,255,.65);
+    box-shadow:0 0 18px rgba(0,160,255,.4),0 4px 16px rgba(0,0,0,.5);
+    object-fit:cover;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,160,255,.4))}
+  .c3d-name{font-size:18px;font-weight:700;color:rgba(228,248,255,1);
+    letter-spacing:.5px;text-shadow:0 0 16px rgba(0,200,255,.6),0 2px 4px rgba(0,0,0,.8)}
+  .c3d-title{font-family:monospace;font-size:9px;letter-spacing:2.5px;
+    color:rgba(0,165,255,.7);margin-top:3px}
 
-    raycaster.setFromCamera({x:nx,y:ny}, camera);
-    const hits = raycaster.intersectObjects(interactables.map(i=>i.mesh));
+  /* 3D 聯絡按鈕 */
+  .c3d-btn{
+    width:100%;max-width:380px;
+    height:52px;
+    display:flex;align-items:center;gap:0;
+    margin-bottom:8px;
+    border-radius:14px;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    text-decoration:none;
+    position:relative;
+    transform:translateZ(0px) rotateX(0deg);
+    transform-style:preserve-3d;
+    transition:transform .2s ease, box-shadow .2s ease;
+    animation:cardSlide .5s ease both;
+    box-shadow:
+      0 4px 0 rgba(0,0,0,.6),
+      0 8px 24px rgba(0,0,0,.5),
+      0 0 0 1px rgba(0,150,255,.3),
+      inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .c3d-btn::before{
+    content:'';position:absolute;inset:0;border-radius:14px;
+    background:linear-gradient(180deg,
+      rgba(255,255,255,.07) 0%,
+      rgba(255,255,255,.02) 40%,
+      rgba(0,0,0,.1) 100%);
+    pointer-events:none;z-index:1;
+  }
+  .c3d-btn:active{
+    transform:translateZ(-4px) rotateX(4deg) translateY(3px);
+    box-shadow:0 1px 0 rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.5),
+      0 0 0 1px rgba(0,150,255,.3);
+  }
+  .c3d-btn-accent{
+    width:5px;height:100%;border-radius:14px 0 0 14px;flex-shrink:0;
+    box-shadow:inset -2px 0 4px rgba(0,0,0,.4);
+  }
+  .c3d-btn-icon{
+    width:52px;height:52px;display:flex;align-items:center;justify-content:center;
+    font-size:22px;flex-shrink:0;
+    background:rgba(255,255,255,.06);
+    border-right:1px solid rgba(255,255,255,.05);
+    position:relative;z-index:2;
+  }
+  .c3d-btn-text{
+    flex:1;padding:0 14px;
+    font-size:14px;font-weight:600;letter-spacing:.5px;
+    color:rgba(215,240,255,.95);
+    text-shadow:0 1px 3px rgba(0,0,0,.6);
+    position:relative;z-index:2;
+  }
+  .c3d-btn-arrow{
+    padding:0 14px;font-size:16px;
+    color:rgba(0,180,255,.5);
+    position:relative;z-index:2;
+  }
 
-    if(hits.length){
-      const obj = interactables.find(i=>i.mesh===hits[0].object);
-      if(obj) window.open(obj.url);
+  .c3d-btn:nth-child(1){animation-delay:.05s;background:linear-gradient(135deg,rgba(0,30,70,.9),rgba(0,15,40,.95))}
+  .c3d-btn:nth-child(2){animation-delay:.12s;background:linear-gradient(135deg,rgba(0,35,55,.9),rgba(0,18,35,.95))}
+  .c3d-btn:nth-child(3){animation-delay:.19s;background:linear-gradient(135deg,rgba(30,20,0,.9),rgba(18,12,0,.95))}
+
+  /* 社群圖示列 */
+  .c3d-socials{
+    display:flex;gap:12px;justify-content:center;
+    padding:4px 16px 0;
+    width:100%;max-width:380px;
+    animation:cardSlide .5s .25s ease both;
+  }
+  .c3d-soc{
+    width:56px;height:56px;border-radius:16px;overflow:hidden;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+    box-shadow:0 4px 0 rgba(0,0,0,.5),0 6px 20px rgba(0,0,0,.45),
+      0 0 0 1px rgba(0,140,255,.2),inset 0 1px 0 rgba(255,255,255,.1);
+    transform:translateZ(0);
+    transition:transform .15s,box-shadow .15s;
+    animation:iconPop .4s ease both;
+    position:relative;
+  }
+  .c3d-soc::before{content:'';position:absolute;inset:0;
+    background:linear-gradient(160deg,rgba(255,255,255,.12),transparent 50%);z-index:1;pointer-events:none}
+  .c3d-soc:active{transform:translateY(3px);
+    box-shadow:0 1px 0 rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.4),0 0 0 1px rgba(0,140,255,.2)}
+  .c3d-soc:nth-child(1){animation-delay:.28s}
+  .c3d-soc:nth-child(2){animation-delay:.34s}
+  .c3d-soc:nth-child(3){animation-delay:.40s}
+  .c3d-soc:nth-child(4){animation-delay:.46s}
+  .c3d-soc img{width:100%;height:100%;object-fit:cover;display:block;position:relative;z-index:0}
+
+  .c3d-divider{
+    width:100%;max-width:380px;height:1px;margin:4px 0;
+    background:linear-gradient(90deg,transparent,rgba(0,185,255,.35) 30%,rgba(0,185,255,.35) 70%,transparent);
+  }
+  </style>
+</head>
+<body>
+
+  <canvas id="renderCanvas"></canvas>
+  <div id="flash"></div>
+  <div id="toast"></div>
+
+  <!-- 掃描 UI -->
+  <div id="scan-ov">
+    <div class="sbox">
+      <div class="sline"></div>
+      <div class="corn c-tl"></div><div class="corn c-tr"></div>
+      <div class="corn c-bl"></div><div class="corn c-br"></div>
+    </div>
+    <div id="scan-label">AR READY<br>請對準名片正面或背面</div>
+  </div>
+
+  <div id="status"></div>
+
+  <!-- ★ 3D 懸浮名片面板（現在會跟隨 isaofront 真實移動） -->
+  <div id="card-3d-panel">
+    <div class="c3d-inner">
+
+      <!-- 個人資料 -->
+      <div class="c3d-profile">
+        <img class="c3d-photo" id="c3d-photo"
+          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png"
+          crossorigin="anonymous" alt="profile"/>
+        <div>
+          <div class="c3d-name">MingHsun Li</div>
+          <div class="c3d-title">RED PANDA KEEPER</div>
+        </div>
+      </div>
+
+      <div class="c3d-divider"></div>
+
+      <!-- 聯絡按鈕 -->
+      <a class="c3d-btn" id="btn-website" href="https://isaoinvest.com" target="_blank" rel="noopener">
+        <div class="c3d-btn-accent" style="background:#00aaff"></div>
+        <div class="c3d-btn-icon">🌐</div>
+        <div class="c3d-btn-text">Website</div>
+        <div class="c3d-btn-arrow">›</div>
+      </a>
+      <a class="c3d-btn" id="btn-email" href="mailto:isaoinvest@gmail.com">
+        <div class="c3d-btn-accent" style="background:#00cc88"></div>
+        <div class="c3d-btn-icon">✉</div>
+        <div class="c3d-btn-text">Email</div>
+        <div class="c3d-btn-arrow">›</div>
+      </a>
+      <a class="c3d-btn" id="btn-phone" href="tel:+886920820259">
+        <div class="c3d-btn-accent" style="background:#ff8800"></div>
+        <div class="c3d-btn-icon">☎</div>
+        <div class="c3d-btn-text">Phone</div>
+        <div class="c3d-btn-arrow">›</div>
+      </a>
+
+      <div class="c3d-divider"></div>
+
+      <!-- 社群圖示 -->
+      <div class="c3d-socials">
+        <div class="c3d-soc" id="soc-line" title="LINE">
+          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" alt="LINE"/>
+        </div>
+        <div class="c3d-soc" id="soc-yt" title="YouTube">
+          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" alt="YouTube"/>
+        </div>
+        <div class="c3d-soc" id="soc-ig" title="Instagram">
+          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" alt="Instagram"/>
+        </div>
+        <div class="c3d-soc" id="soc-fb" title="Facebook">
+          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" alt="Facebook"/>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 影片控制面板 -->
+  <div id="video-panel">
+    <div class="vp-pill" id="vp-play-btn">
+      <span id="vp-icon">▶</span>
+      <span id="vp-txt">點擊 播放影片</span>
+    </div>
+  </div>
+
+  <!-- 底部控制列 -->
+  <div class="btn-bar">
+    <button class="bb" id="bb-play">▶ 播放</button>
+    <button class="bb" id="bb-mute">🔇 靜音</button>
+    <button class="bb" id="bb-holo">🔷 全息</button>
+  </div>
+
+  <script>
+  // ═══ UI HELPERS ══════════════════════════════════════
+  let _stT, _toastT;
+  function showSt(msg, dur=3000) {
+    const e=document.getElementById('status');
+    e.textContent=msg; e.classList.add('show');
+    clearTimeout(_stT); _stT=setTimeout(()=>e.classList.remove('show'),dur);
+  }
+  function showToast(msg) {
+    const e=document.getElementById('toast');
+    e.textContent=msg; e.classList.add('show');
+    clearTimeout(_toastT); _toastT=setTimeout(()=>e.classList.remove('show'),1800);
+  }
+  function doFlash() {
+    const f=document.getElementById('flash');
+    f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),700);
+  }
+
+  // ═══ 社群按鈕事件 ════════════════════════════════════
+  const socLinks = {
+    'soc-line': 'https://line.me/R/ti/p/@722fdkca',
+    'soc-yt':   'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ',
+    'soc-ig':   'https://www.instagram.com/isaoinvest',
+    'soc-fb':   'https://www.facebook.com/profile.php?id=61552552833098',
+  };
+  Object.entries(socLinks).forEach(([id,url])=>{
+    document.getElementById(id).addEventListener('click', e=>{
+      e.stopPropagation();
+      window.open(url,'_blank','noopener');
+    });
+  });
+  // 聯絡按鈕阻止冒泡
+  ['btn-website','btn-email','btn-phone'].forEach(id=>{
+    document.getElementById(id).addEventListener('click', e=>{
+      e.stopPropagation();
+      showToast('▶ ' + document.getElementById(id).querySelector('.c3d-btn-text').textContent);
+    });
+  });
+
+  // ═══ 3D CARD PANEL 顯示/隱藏 ════════════════════════
+  const cardPanel = document.getElementById('card-3d-panel');
+  function showCard() { cardPanel.classList.add('show'); }
+  function hideCard() { cardPanel.classList.remove('show'); }
+
+  // ═══ RACCOON (Three.js) ══════════
+  function loadRaccoon(group, cb) {
+    const ldr = new THREE.GLTFLoader();
+    ldr.load(AR_CONFIG.raccoonSrc, gltf=>{
+      const model=gltf.scene;
+      const mixer=new THREE.AnimationMixer(model);
+      gltf.animations.forEach(c=>mixer.clipAction(c).play());
+      model.scale.setScalar(.09);
+      model.position.set(0,.08,.02);
+      group.add(model);
+      cb({model,mixer});
+    }, undefined, ()=>{});
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // AR MODULE
+  // ═══════════════════════════════════════════════════════
+  function mkARModule(indexedData) {
+
+    const nameToRole = new Map();
+    const ROLES = ['card','video'];
+    indexedData.forEach((d,i)=>{ if(d) nameToRole.set(d.name, ROLES[i]); });
+
+    let cardGroup, raccoonData=null;
+    let videoGroup, videoMesh, videoEl, videoTex;
+    let videoPlaying=false, videoHasInteracted=false;
+    let holoVisible=true;
+    let uiAnchor;                     // ← 新增：3D anchor，用來把名片面板投影到螢幕
+
+    const clock = new THREE.Clock();
+    const scanEl  = document.getElementById('scan-ov');
+    const vpPanel = document.getElementById('video-panel');
+    const vpIcon  = document.getElementById('vp-icon');
+    const vpTxt   = document.getElementById('vp-txt');
+
+    const S = { active: null };
+
+    function clearAll() {
+      if (cardGroup) cardGroup.visible=false;
+      hideCard();
+      if (videoGroup) videoGroup.visible=false;
+      vpPanel.classList.remove('show');
+      if (videoEl) { videoEl.pause(); videoPlaying=false; }
+      vpIcon.textContent='▶'; vpTxt.textContent='點擊 播放影片';
+      document.getElementById('bb-play').textContent='▶ 播放';
+      S.active=null;
+    }
+
+    function activateCard(detail) {
+      clearAll();
+      const {position:p,rotation:r,scale:s}=detail;
+      cardGroup.position.set(p.x,p.y,p.z);
+      cardGroup.quaternion.set(r.x,r.y,r.z,r.w);
+      cardGroup.scale.setScalar(s);
+      cardGroup.visible=true;
+      showCard();
+      scanEl.classList.add('hidden');
+      S.active='card';
+      doFlash();
+      showSt('🦝 名片正面！', 3000);
+    }
+
+    function activateVideo(detail) {
+      clearAll();
+      const {position:p,rotation:r,scale:s}=detail;
+      videoGroup.position.set(p.x,p.y,p.z);
+      videoGroup.quaternion.set(r.x,r.y,r.z,r.w);
+      videoGroup.scale.setScalar(s);
+      videoGroup.visible=true;
+      vpPanel.classList.add('show');
+      scanEl.classList.add('hidden');
+      S.active='video';
+      doFlash();
+      if (!videoHasInteracted&&videoEl) {
+        videoEl.muted=true; videoEl.currentTime=0;
+        videoEl.play().then(()=>{
+          videoPlaying=true;
+          vpIcon.textContent='⏸'; vpTxt.textContent='點擊 暫停影片';
+        }).catch(()=>{});
+      }
+      showSt('🎬 名片背面！影片播放中');
+    }
+
+    function onFound({detail}) {
+      const role=nameToRole.get(detail.name);
+      if (!role) return;
+      if (role==='card') activateCard(detail);
+      else activateVideo(detail);
+    }
+
+    function onUpdated({detail}) {
+      const role=nameToRole.get(detail.name);
+      if (!role || role!==S.active) return;
+      const {position:p,rotation:r,scale:s}=detail;
+      if (role==='card') {
+        cardGroup.position.set(p.x,p.y,p.z);
+        cardGroup.quaternion.set(r.x,r.y,r.z,r.w);
+        cardGroup.scale.setScalar(s);
+      } else {
+        videoGroup.position.set(p.x,p.y,p.z);
+        videoGroup.quaternion.set(r.x,r.y,r.z,r.w);
+        videoGroup.scale.setScalar(s);
+      }
+    }
+
+    function onLost({detail}) {
+      const role=nameToRole.get(detail?.name||'');
+      if (!role || role!==S.active) return;
+      clearAll();
+      scanEl.classList.remove('hidden');
+      showSt('🔍 請對準名片正面或背面');
+    }
+
+    function setupBtns() {
+      document.getElementById('bb-play').addEventListener('click',()=>{
+        if (!videoEl||S.active!=='video'){showToast('請先掃描名片背面');return;}
+        if (videoPlaying){
+          videoEl.pause(); videoPlaying=false;
+          vpIcon.textContent='▶'; vpTxt.textContent='點擊 播放影片';
+          document.getElementById('bb-play').textContent='▶ 播放';
+        } else {
+          if (!videoHasInteracted){videoEl.muted=false;videoHasInteracted=true;}
+          videoEl.play().then(()=>{
+            videoPlaying=true;
+            vpIcon.textContent='⏸'; vpTxt.textContent='點擊 暫停影片';
+            document.getElementById('bb-play').textContent='⏸ 暫停';
+          }).catch(()=>{});
+        }
+      });
+      document.getElementById('bb-mute').addEventListener('click',()=>{
+        if (!videoEl) return;
+        videoEl.muted=!videoEl.muted;
+        document.getElementById('bb-mute').textContent=videoEl.muted?'🔇 靜音':'🔊 聲音';
+      });
+      document.getElementById('bb-holo').addEventListener('click',()=>{
+        holoVisible=!holoVisible;
+        if (cardGroup) cardGroup.visible = S.active==='card' && holoVisible;
+        if (holoVisible && S.active==='card') showCard(); else hideCard();
+        document.getElementById('bb-holo').classList.toggle('active',holoVisible);
+        showToast(holoVisible?'🔷 全息 ON':'🔲 全息 OFF');
+      });
+      document.getElementById('vp-play-btn').addEventListener('click',e=>{
+        e.stopPropagation();
+        document.getElementById('bb-play').click();
+      });
+    }
+
+    return {
+      name:'ar-card',
+      onStart() {
+        const {scene,renderer,camera}=XR8.Threejs.xrScene();
+
+        renderer.autoClear=false;
+        renderer.sortObjects=true;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth,window.innerHeight,false);
+        renderer.domElement.style.cssText=
+          'position:fixed!important;top:0!important;left:0!important;'+
+          'width:100vw!important;height:100vh!important;z-index:0!important;';
+
+        scene.add(new THREE.AmbientLight(0xffffff,1.1));
+        const dir=new THREE.DirectionalLight(0xffffff,.75);
+        dir.position.set(.5,2,1.5); scene.add(dir);
+
+        // 正面：浣熊 + 新的 3D UI anchor
+        cardGroup=new THREE.Group(); cardGroup.visible=false; scene.add(cardGroup);
+
+        // ★ 新增 3D anchor（會放在名片右上方，面板會投影在此位置）
+        uiAnchor = new THREE.Object3D();
+        uiAnchor.position.set(1.2, 0.5, 0.05);   // ← 可調整：x=右方距離, y=上方高度, z=前後
+        cardGroup.add(uiAnchor);
+
+        loadRaccoon(cardGroup,data=>{raccoonData=data;});
+
+        // 背面：影片平面（維持不變）
+        videoGroup=new THREE.Group(); videoGroup.visible=false; scene.add(videoGroup);
+        videoEl=document.createElement('video');
+        videoEl.src=AR_CONFIG.videoSrc; videoEl.loop=true; videoEl.muted=true;
+        videoEl.playsInline=true; videoEl.crossOrigin='anonymous';
+        videoEl.setAttribute('webkit-playsinline','true');
+        videoTex=new THREE.VideoTexture(videoEl);
+        videoTex.minFilter=videoTex.magFilter=THREE.LinearFilter;
+        videoTex.format=THREE.RGBAFormat;
+        videoMesh=new THREE.Mesh(
+          new THREE.PlaneGeometry(1.5,1.5*(9/16)),
+          new THREE.MeshBasicMaterial({map:videoTex,side:THREE.DoubleSide,toneMapped:false})
+        );
+        videoGroup.add(videoMesh);
+
+        setupBtns();
+        clock.start();
+        setTimeout(()=>showSt('請對準名片正面（浣熊）或背面（影片）',5000),600);
+      },
+      onUpdate() {
+        const delta=clock.getDelta();
+        if (raccoonData?.mixer) raccoonData.mixer.update(delta);
+        if (raccoonData?.model&&cardGroup.visible)
+          raccoonData.model.position.y=.08+Math.sin(clock.elapsedTime*1.2)*.022;
+
+        // ★ 新增：把 3D anchor 投影到螢幕，讓名片面板「立體浮動」並跟隨 isaofront 移動
+        if (S.active === 'card' && cardGroup.visible && uiAnchor) {
+          const {camera} = XR8.Threejs.xrScene();
+          cardGroup.updateMatrixWorld();                    // 確保世界座標正確
+          const vector = new THREE.Vector3();
+          uiAnchor.getWorldPosition(vector);
+          vector.project(camera);
+
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+
+          let screenX = (vector.x * 0.5 + 0.5) * w;
+          let screenY = (-vector.y * 0.5 + 0.5) * h;
+
+          // 面板置中在 anchor 點旁邊（避免超出畫面）
+          const panelW = 380;
+          let left = screenX - panelW / 2;
+          left = Math.max(20, Math.min(left, w - panelW - 20));
+
+          // 垂直位置可微調（目前讓面板出現在浣熊右上方）
+          const top = Math.max(40, screenY - 140);
+
+          cardPanel.style.left = `${left}px`;
+          cardPanel.style.top = `${top}px`;
+          cardPanel.style.bottom = 'auto';
+          cardPanel.style.right = 'auto';
+        }
+      },
+      listeners:[
+        {event:'reality.imagefound',   process:onFound},
+        {event:'reality.imageupdated', process:onUpdated},
+        {event:'reality.imagelost',    process:onLost},
+      ],
+      onAttach() {
+        window.addEventListener('resize',()=>{
+          const{renderer}=XR8.Threejs.xrScene();
+          renderer.setSize(window.innerWidth,window.innerHeight,false);
+        });
+        document.addEventListener('visibilitychange',()=>{
+          if (document.hidden&&videoEl){videoEl.pause();videoPlaying=false;}
+          else if (S.active==='video'&&videoPlaying&&videoEl) videoEl.play().catch(()=>{});
+        });
+      }
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // MAIN
+  // ═══════════════════════════════════════════════════════
+  let _xrReady=false, _loadResult=null;
+
+  window.addEventListener('xrloaded',()=>{ _xrReady=true; });
+
+  async function loadTargets() {
+    const indexed=[];
+    for (const [i,path] of AR_CONFIG.targetJsonPaths.entries()) {
+      try {
+        const r=await fetch(path);
+        if (!r.ok) throw new Error('HTTP '+r.status);
+        const text=await r.text();
+        let d;
+        try { d=JSON.parse(text); }
+        catch { throw new Error('JSON parse error'); }
+        indexed.push(d);
+      } catch(e) {
+        indexed.push(null);
+        console.warn('target['+i+'] load fail:',e.message);
+      }
+    }
+    _loadResult={valid:indexed.filter(Boolean), indexed};
+  }
+
+  async function requestSensorPermissions() {
+    for (const E of [DeviceMotionEvent,DeviceOrientationEvent]) {
+      if (typeof E!=='undefined'&&typeof E.requestPermission==='function') {
+        try { await E.requestPermission(); } catch {}
+      }
     }
   }
 
-  window.addEventListener('click',e=>handleClick(e.clientX,e.clientY));
-
-  return {
-    name:'main',
-
-    onStart(){
-      const xr = XR8.Threejs.xrScene();
-      scene = xr.scene;
-      camera = xr.camera;
-
-      scene.add(new THREE.AmbientLight(0xffffff,1));
-
-      group = new THREE.Group();
-      group.visible=false;
-      scene.add(group);
-
-      // ===== MODEL =====
-      new THREE.GLTFLoader().load(CONFIG.model, gltf=>{
-        const m = gltf.scene;
-        m.scale.set(0.1,0.1,0.1);
-        m.position.set(-0.3,0,0);
-        group.add(m);
-
-        mixer = new THREE.AnimationMixer(m);
-        gltf.animations.forEach(a=>mixer.clipAction(a).play());
-      });
-
-      // ===== BUTTONS =====
-      group.add(makeButton("Website","https://isaoinvest.com",0));
-      group.add(makeButton("Email","mailto:test@test.com",-0.25));
-
-      // ===== VIDEO =====
-      videoEl = document.createElement('video');
-      videoEl.src = CONFIG.video;
-      videoEl.loop = true;
-      videoEl.muted = true;
-      videoEl.playsInline = true;
-
-      videoTex = new THREE.VideoTexture(videoEl);
-
-      videoMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.5,0.9),
-        new THREE.MeshBasicMaterial({map:videoTex})
-      );
-
-      videoMesh.position.set(0,0.5,0);
-      group.add(videoMesh);
-    },
-
-    onUpdate(){
-      if(mixer) mixer.update(0.016);
-    },
-
-    listeners:[
-      {
-        event:'reality.imagefound',
-        process:({detail})=>{
-          group.visible=true;
-          applyPose(group,detail);
-          videoEl.play();
-        }
-      },
-      {
-        event:'reality.imageupdated',
-        process:({detail})=>{
-          applyPose(group,detail);
-        }
-      },
-      {
-        event:'reality.imagelost',
-        process:()=>{
-          group.visible=false;
-          videoEl.pause();
-        }
-      }
-    ]
+  async function startXR8() {
+    showSt('AR 載入中…',6000);
+    let w=0;
+    while ((!_loadResult||!_xrReady)&&w<12000) {
+      await new Promise(r=>setTimeout(r,200)); w+=200;
+    }
+    if (!_loadResult?.valid?.length||!_xrReady) {
+      showSt('❌ AR 初始化失敗，請重新整理',8000); return;
+    }
+    const {valid,indexed}=_loadResult;
+    XR8.XrController.configure({disableWorldTracking:true, imageTargetData:valid});
+    XR8.addCameraPipelineModules([
+      XR8.GlTextureRenderer.pipelineModule(),
+      XR8.Threejs.pipelineModule(),
+      XR8.XrController.pipelineModule(),
+      mkARModule(indexed),
+    ]);
+    XR8.run({canvas:document.getElementById('renderCanvas')});
   }
-}
 
-// ===== START =====
-async function start(){
-
-  XR8.XrController.configure({
-    imageTargetData: CONFIG.targets,
-    disableWorldTracking:true
+  window.addEventListener('xrerror',e=>{
+    showSt('❌ AR 錯誤：'+JSON.stringify(e.detail),10000);
+    console.error('xrerror',e.detail);
   });
 
-  XR8.addCameraPipelineModules([
-    XR8.GlTextureRenderer.pipelineModule(),
-    XR8.Threejs.pipelineModule(),
-    XR8.XrController.pipelineModule(),
-    arModule()
-  ]);
+  (() => {
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style,{
+      position:'fixed',top:0,left:0,width:'100%',height:'100%',
+      zIndex:9999, display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center', gap:'16px',
+      background:'rgba(0,4,16,.95)', cursor:'pointer',
+    });
+    overlay.innerHTML=`
+      <div style="font-size:40px;animation:pulse 2s infinite">🦝</div>
+      <div style="font-family:monospace;font-size:13px;letter-spacing:3px;
+        color:rgba(0,200,255,.8);text-align:center">AR BUSINESS CARD<br>
+        <span style="font-size:10px;opacity:.5;letter-spacing:1px">TAP TO START</span>
+      </div>
+      <style>@keyframes pulse{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:.6;transform:scale(1.08)}}</style>
+    `;
+    overlay.addEventListener('click', async function tap() {
+      overlay.removeEventListener('click', tap);
+      overlay.remove();
+      await requestSensorPermissions();
+      startXR8();
+    }, {once:true});
+    document.body.appendChild(overlay);
 
-  XR8.run({
-    canvas: document.getElementById('renderCanvas')
-  });
-
-}
-
-start();
-
-</script>
-
+    loadTargets();
+  })();
+  </script>
 </body>
 </html>
