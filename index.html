@@ -1,716 +1,375 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <title>AR 名片 · MingHsun Li</title>
-
-  <!-- ══════════════════════════════════════════════
-       ★★★  CONFIG  ★★★
-  ══════════════════════════════════════════════ -->
-  <script>
-  const AR_CONFIG = {
-    targetJsonPaths: [
-      './image-targets/isaofront.json',   // [0] → 正面 card
-      './image-targets/isaoback.json',    // [1] → 背面 video
-    ],
-    videoSrc: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
-    raccoonSrc: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf',
-    profile: {
-      photo: 'https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png',
-      name:  'MingHsun Li',
-      title: 'Red Panda Keeper',
-    },
-    contacts: [
-      { label:'Website', icon:'🌐', accent:'#00aaff', url:'https://isaoinvest.com' },
-      { label:'Email',   icon:'✉',  accent:'#00cc88', url:'mailto:isaoinvest@gmail.com' },
-      { label:'Phone',   icon:'☎',  accent:'#ff8800', url:'tel:+886920820259' },
-    ],
-    socials: [
-      { label:'LINE',      img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png',      url:'https://line.me/R/ti/p/@722fdkca' },
-      { label:'YouTube',   img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png',   url:'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ' },
-      { label:'Instagram', img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png', url:'https://www.instagram.com/isaoinvest' },
-      { label:'Facebook',  img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png',  url:'https://www.facebook.com/profile.php?id=61552552833098' },
-    ],
-  };
-  </script>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-  <!-- data-preload-chunks="slam" 必須保留：xr-slam.js 含相機 pipeline，移除→黑屏 -->
-  <script src="./external/xr/xr.js" data-preload-chunks="slam"></script>
-
-  <style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;
-    touch-action:none;-webkit-user-select:none;user-select:none}
-  #renderCanvas{position:fixed!important;top:0!important;left:0!important;
-    width:100vw!important;height:100vh!important;z-index:0;display:block}
-  /* XR8 內部元素 visibility:hidden（非 display:none）—— iOS Safari display:none 停止 video 解碼→黑屏 */
-  [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{
-    visibility:hidden!important;pointer-events:none!important}
-  [class*="watermark"],[id*="watermark"]{display:none!important}
-
-  @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.2}}
-  @keyframes scan{0%{transform:translateY(0)}50%{transform:translateY(216px)}100%{transform:translateY(0)}}
-  @keyframes float3d{0%,100%{transform:translateY(0px) rotateX(0deg)}
-    50%{transform:translateY(-8px) rotateX(2deg)}}
-  @keyframes glow{0%,100%{box-shadow:0 0 12px rgba(0,180,255,.4),0 8px 32px rgba(0,100,200,.3)}
-    50%{box-shadow:0 0 28px rgba(0,210,255,.75),0 12px 48px rgba(0,140,255,.5)}}
-  @keyframes cardSlide{from{opacity:0;transform:translateY(24px) scale(.96)}
-    to{opacity:1;transform:translateY(0) scale(1)}}
-  @keyframes iconPop{from{opacity:0;transform:scale(.5) rotateY(-30deg)}
-    to{opacity:1;transform:scale(1) rotateY(0deg)}}
-  @keyframes scanline{0%,100%{opacity:0}5%,95%{opacity:1}}
-
-  /* ─── 掃描 UI ─── */
-  #scan-ov{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:22px;pointer-events:none;opacity:1;transition:opacity .5s}
-  #scan-ov.hidden{opacity:0}
-  .sbox{width:218px;height:218px;position:relative;
-    border:1.5px solid rgba(0,210,255,.35);border-radius:12px}
-  .sline{position:absolute;height:2px;width:100%;top:0;
-    background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);
-    animation:scan 2s ease-in-out infinite}
-  .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.9);border-style:solid;border-width:0}
-  .c-tl{top:-2px;left:-2px;border-top-width:2.5px;border-left-width:2.5px;border-radius:4px 0 0 0}
-  .c-tr{top:-2px;right:-2px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 4px 0 0}
-  .c-bl{bottom:-2px;left:-2px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 4px}
-  .c-br{bottom:-2px;right:-2px;border-bottom-width:2.5px;border-right-width:2.5px;border-radius:0 0 4px 0}
-  #scan-label{font-family:monospace;font-size:11px;letter-spacing:2px;
-    color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
-
-  /* ─── Status ─── */
-  #status{position:fixed;top:14px;left:50%;transform:translateX(-50%);
-    padding:7px 18px;background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);
-    border-radius:20px;backdrop-filter:blur(10px);font-family:monospace;font-size:11px;
-    color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;
-    white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
-  #status.show{opacity:1}
-
-  /* ─── Flash ─── */
-  #flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;
-    opacity:0;transition:opacity .6s;
-    background:radial-gradient(circle,rgba(0,210,255,.15),transparent 68%)}
-  #flash.on{opacity:1}
-
-  /* ─── Toast ─── */
-  #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    padding:9px 22px;background:rgba(0,30,90,.94);border:1px solid rgba(0,200,255,.5);
-    border-radius:28px;font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);
-    z-index:200;opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap}
-  #toast.show{opacity:1}
-
-  /* ─── 影片控制 ─── */
-  #video-panel{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
-    z-index:60;opacity:0;transition:opacity .4s,transform .4s;
-    pointer-events:none;white-space:nowrap}
-  #video-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
-  .vp-pill{display:flex;align-items:center;gap:10px;padding:11px 22px;
-    background:rgba(0,6,22,.92);border:1px solid rgba(0,175,255,.35);border-radius:50px;
-    backdrop-filter:blur(14px);font-family:monospace;font-size:11px;
-    letter-spacing:1.5px;color:rgba(0,200,255,.88);cursor:pointer;
-    -webkit-tap-highlight-color:transparent}
-  .vp-pill:active{background:rgba(0,50,130,.6)}
-  #vp-icon{font-size:18px}
-
-  /* ─── 底部控制列（簡化版，無偵錯）─── */
-  .btn-bar{position:fixed;bottom:0;left:0;right:0;height:64px;z-index:600;
-    display:flex;align-items:center;justify-content:center;gap:12px;
-    background:rgba(0,4,14,.96);border-top:1px solid rgba(0,150,255,.18)}
-  .bb{height:40px;padding:0 18px;background:rgba(0,20,60,.8);
-    border:1px solid rgba(0,150,255,.35);border-radius:20px;
-    font-family:monospace;font-size:11px;color:rgba(0,200,255,.9);
-    cursor:pointer;-webkit-tap-highlight-color:transparent;
-    display:flex;align-items:center;gap:6px;letter-spacing:.5px}
-  .bb:active{background:rgba(0,80,200,.5);border-color:rgba(0,220,255,.8)}
-  .bb.active{background:rgba(0,60,160,.6);border-color:rgba(0,220,255,.7)}
-
-  /* ════════════════════════════════════════════════
-     ★★★  問題(3)修正：3D 懸浮名片面板  ★★★
-     - perspective 透視使按鈕有真實 3D 感
-     - 每個按鈕獨立懸浮，有深度差距
-     - 光澤反射、陰影模擬立體
-  ════════════════════════════════════════════════ */
-  #card-3d-panel{
-    position:fixed;bottom:80px;left:0;right:0;
-    z-index:55;opacity:0;pointer-events:none;
-    transition:opacity .5s;
-    perspective:600px;           /* 透視深度 */
-    perspective-origin:50% 80%;
-  }
-  #card-3d-panel.show{opacity:1;pointer-events:auto}
-
-  .c3d-inner{
-    display:flex;flex-direction:column;align-items:center;gap:0;
-    padding:0 16px 8px;
-    transform-style:preserve-3d;
-  }
-
-  /* 個人資料列 */
-  .c3d-profile{
-    display:flex;align-items:center;gap:14px;
-    padding:12px 20px 8px;width:100%;max-width:380px;
-    animation:cardSlide .5s ease both;
-  }
-  .c3d-photo{width:52px;height:52px;border-radius:50%;
-    border:2.5px solid rgba(0,200,255,.65);
-    box-shadow:0 0 18px rgba(0,160,255,.4),0 4px 16px rgba(0,0,0,.5);
-    object-fit:cover;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(0,160,255,.4))}
-  .c3d-name{font-size:18px;font-weight:700;color:rgba(228,248,255,1);
-    letter-spacing:.5px;text-shadow:0 0 16px rgba(0,200,255,.6),0 2px 4px rgba(0,0,0,.8)}
-  .c3d-title{font-family:monospace;font-size:9px;letter-spacing:2.5px;
-    color:rgba(0,165,255,.7);margin-top:3px}
-
-  /* 3D 聯絡按鈕 */
-  .c3d-btn{
-    width:100%;max-width:380px;
-    height:52px;
-    display:flex;align-items:center;gap:0;
-    margin-bottom:8px;
-    border-radius:14px;
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-    text-decoration:none;
-    position:relative;
-    /* ★ 3D 效果核心 */
-    transform:translateZ(0px) rotateX(0deg);
-    transform-style:preserve-3d;
-    transition:transform .2s ease, box-shadow .2s ease;
-    animation:cardSlide .5s ease both;
-    /* 立體陰影 */
-    box-shadow:
-      0 4px 0 rgba(0,0,0,.6),          /* 底部實體陰影（製造厚度感）*/
-      0 8px 24px rgba(0,0,0,.5),        /* 遠陰影 */
-      0 0 0 1px rgba(0,150,255,.3),     /* 外框 */
-      inset 0 1px 0 rgba(255,255,255,.08); /* 頂部光澤 */
-  }
-  .c3d-btn::before{
-    content:'';position:absolute;inset:0;border-radius:14px;
-    background:linear-gradient(180deg,
-      rgba(255,255,255,.07) 0%,
-      rgba(255,255,255,.02) 40%,
-      rgba(0,0,0,.1) 100%);
-    pointer-events:none;z-index:1;
-  }
-  .c3d-btn:active{
-    transform:translateZ(-4px) rotateX(4deg) translateY(3px);
-    box-shadow:0 1px 0 rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.5),
-      0 0 0 1px rgba(0,150,255,.3);
-  }
-  .c3d-btn-accent{
-    width:5px;height:100%;border-radius:14px 0 0 14px;flex-shrink:0;
-    /* 3D 側面邊緣 */
-    box-shadow:inset -2px 0 4px rgba(0,0,0,.4);
-  }
-  .c3d-btn-icon{
-    width:52px;height:52px;display:flex;align-items:center;justify-content:center;
-    font-size:22px;flex-shrink:0;
-    /* 浮起的 icon 背景圓 */
-    background:rgba(255,255,255,.06);
-    border-right:1px solid rgba(255,255,255,.05);
-    position:relative;z-index:2;
-  }
-  .c3d-btn-text{
-    flex:1;padding:0 14px;
-    font-size:14px;font-weight:600;letter-spacing:.5px;
-    color:rgba(215,240,255,.95);
-    text-shadow:0 1px 3px rgba(0,0,0,.6);
-    position:relative;z-index:2;
-  }
-  .c3d-btn-arrow{
-    padding:0 14px;font-size:16px;
-    color:rgba(0,180,255,.5);
-    position:relative;z-index:2;
-  }
-
-  /* 動畫延遲 */
-  .c3d-btn:nth-child(1){animation-delay:.05s;background:linear-gradient(135deg,rgba(0,30,70,.9),rgba(0,15,40,.95))}
-  .c3d-btn:nth-child(2){animation-delay:.12s;background:linear-gradient(135deg,rgba(0,35,55,.9),rgba(0,18,35,.95))}
-  .c3d-btn:nth-child(3){animation-delay:.19s;background:linear-gradient(135deg,rgba(30,20,0,.9),rgba(18,12,0,.95))}
-
-  /* 社群圖示列 */
-  .c3d-socials{
-    display:flex;gap:12px;justify-content:center;
-    padding:4px 16px 0;
-    width:100%;max-width:380px;
-    animation:cardSlide .5s .25s ease both;
-  }
-  .c3d-soc{
-    width:56px;height:56px;border-radius:16px;overflow:hidden;
-    cursor:pointer;-webkit-tap-highlight-color:transparent;
-    box-shadow:0 4px 0 rgba(0,0,0,.5),0 6px 20px rgba(0,0,0,.45),
-      0 0 0 1px rgba(0,140,255,.2),inset 0 1px 0 rgba(255,255,255,.1);
-    transform:translateZ(0);
-    transition:transform .15s,box-shadow .15s;
-    animation:iconPop .4s ease both;
-    position:relative;
-  }
-  .c3d-soc::before{content:'';position:absolute;inset:0;
-    background:linear-gradient(160deg,rgba(255,255,255,.12),transparent 50%);z-index:1;pointer-events:none}
-  .c3d-soc:active{transform:translateY(3px);
-    box-shadow:0 1px 0 rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.4),0 0 0 1px rgba(0,140,255,.2)}
-  .c3d-soc:nth-child(1){animation-delay:.28s}
-  .c3d-soc:nth-child(2){animation-delay:.34s}
-  .c3d-soc:nth-child(3){animation-delay:.40s}
-  .c3d-soc:nth-child(4){animation-delay:.46s}
-  .c3d-soc img{width:100%;height:100%;object-fit:cover;display:block;position:relative;z-index:0}
-
-  /* 底部分隔光線 */
-  .c3d-divider{
-    width:100%;max-width:380px;height:1px;margin:4px 0;
-    background:linear-gradient(90deg,transparent,rgba(0,185,255,.35) 30%,rgba(0,185,255,.35) 70%,transparent);
-  }
-  </style>
-</head>
-<body>
-
-  <canvas id="renderCanvas"></canvas>
-  <div id="flash"></div>
-  <div id="toast"></div>
-
-  <!-- 掃描 UI -->
-  <div id="scan-ov">
-    <div class="sbox">
-      <div class="sline"></div>
-      <div class="corn c-tl"></div><div class="corn c-tr"></div>
-      <div class="corn c-bl"></div><div class="corn c-br"></div>
-    </div>
-    <div id="scan-label">AR READY<br>請對準名片正面或背面</div>
-  </div>
-
-  <div id="status"></div>
-
-  <!-- ★(3) 3D 懸浮名片面板 —— DOM overlay，真實 CSS 3D 效果 -->
-  <div id="card-3d-panel">
-    <div class="c3d-inner">
-
-      <!-- 個人資料 -->
-      <div class="c3d-profile">
-        <img class="c3d-photo" id="c3d-photo"
-          src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png"
-          crossorigin="anonymous" alt="profile"/>
-        <div>
-          <div class="c3d-name">MingHsun Li</div>
-          <div class="c3d-title">RED PANDA KEEPER</div>
-        </div>
-      </div>
-
-      <div class="c3d-divider"></div>
-
-      <!-- 聯絡按鈕（3D 懸浮卡片樣式）-->
-      <a class="c3d-btn" id="btn-website" href="https://isaoinvest.com" target="_blank" rel="noopener">
-        <div class="c3d-btn-accent" style="background:#00aaff"></div>
-        <div class="c3d-btn-icon">🌐</div>
-        <div class="c3d-btn-text">Website</div>
-        <div class="c3d-btn-arrow">›</div>
-      </a>
-      <a class="c3d-btn" id="btn-email" href="mailto:isaoinvest@gmail.com">
-        <div class="c3d-btn-accent" style="background:#00cc88"></div>
-        <div class="c3d-btn-icon">✉</div>
-        <div class="c3d-btn-text">Email</div>
-        <div class="c3d-btn-arrow">›</div>
-      </a>
-      <a class="c3d-btn" id="btn-phone" href="tel:+886920820259">
-        <div class="c3d-btn-accent" style="background:#ff8800"></div>
-        <div class="c3d-btn-icon">☎</div>
-        <div class="c3d-btn-text">Phone</div>
-        <div class="c3d-btn-arrow">›</div>
-      </a>
-
-      <div class="c3d-divider"></div>
-
-      <!-- 社群圖示 -->
-      <div class="c3d-socials">
-        <div class="c3d-soc" id="soc-line" title="LINE">
-          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" alt="LINE"/>
-        </div>
-        <div class="c3d-soc" id="soc-yt" title="YouTube">
-          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" alt="YouTube"/>
-        </div>
-        <div class="c3d-soc" id="soc-ig" title="Instagram">
-          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" alt="Instagram"/>
-        </div>
-        <div class="c3d-soc" id="soc-fb" title="Facebook">
-          <img src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" alt="Facebook"/>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- 影片控制面板 -->
-  <div id="video-panel">
-    <div class="vp-pill" id="vp-play-btn">
-      <span id="vp-icon">▶</span>
-      <span id="vp-txt">點擊 播放影片</span>
-    </div>
-  </div>
-
-  <!-- 底部控制列（已移除偵錯按鈕）-->
-  <div class="btn-bar">
-    <button class="bb" id="bb-play">▶ 播放</button>
-    <button class="bb" id="bb-mute">🔇 靜音</button>
-    <button class="bb" id="bb-holo">🔷 全息</button>
-  </div>
-
-  <script>
-  // ═══ UI HELPERS ══════════════════════════════════════
-  let _stT, _toastT;
-  function showSt(msg, dur=3000) {
-    const e=document.getElementById('status');
-    e.textContent=msg; e.classList.add('show');
-    clearTimeout(_stT); _stT=setTimeout(()=>e.classList.remove('show'),dur);
-  }
-  function showToast(msg) {
-    const e=document.getElementById('toast');
-    e.textContent=msg; e.classList.add('show');
-    clearTimeout(_toastT); _toastT=setTimeout(()=>e.classList.remove('show'),1800);
-  }
-  function doFlash() {
-    const f=document.getElementById('flash');
-    f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),700);
-  }
-
-  // ═══ 社群按鈕事件 ════════════════════════════════════
-  const socLinks = {
-    'soc-line': 'https://line.me/R/ti/p/@722fdkca',
-    'soc-yt':   'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ',
-    'soc-ig':   'https://www.instagram.com/isaoinvest',
-    'soc-fb':   'https://www.facebook.com/profile.php?id=61552552833098',
-  };
-  Object.entries(socLinks).forEach(([id,url])=>{
-    document.getElementById(id).addEventListener('click', e=>{
-      e.stopPropagation();
-      window.open(url,'_blank','noopener');
-    });
-  });
-  // 聯絡按鈕阻止冒泡（避免觸發 raycaster）
-  ['btn-website','btn-email','btn-phone'].forEach(id=>{
-    document.getElementById(id).addEventListener('click', e=>{
-      e.stopPropagation();
-      showToast('▶ ' + document.getElementById(id).querySelector('.c3d-btn-text').textContent);
-    });
+<title>AR Business Card</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<!-- 按照官方文檔的正確載入順序 -->
+<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe-extras.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/mindar-image-aframe.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/gsap.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  console.log('DOM loaded');
+  
+  const sceneEl = document.querySelector('a-scene');
+  let arSystem;
+  
+  sceneEl.addEventListener('loaded', function () {
+    arSystem = sceneEl.systems["mindar-image-system"];
+    console.log("MindAR system loaded");
   });
 
-  // ═══ 3D CARD PANEL 顯示/隱藏 ════════════════════════
-  const cardPanel = document.getElementById('card-3d-panel');
-  function showCard() { cardPanel.classList.add('show'); }
-  function hideCard() { cardPanel.classList.remove('show'); }
+  // 等待AR準備就緒後設置所有事件監聽器
+  sceneEl.addEventListener("arReady", (event) => {
+    console.log("MindAR is ready");
+    setupAllEventListeners();
+  });
 
-  // ═══ RACCOON (Three.js，仍留在 AR 空間浮動) ══════════
-  function loadRaccoon(group, cb) {
-    const ldr = new THREE.GLTFLoader();
-    ldr.load(AR_CONFIG.raccoonSrc, gltf=>{
-      const model=gltf.scene;
-      const mixer=new THREE.AnimationMixer(model);
-      gltf.animations.forEach(c=>mixer.clipAction(c).play());
-      model.scale.setScalar(.09);
-      model.position.set(0,.08,.02); // 居中於名片上方
-      group.add(model);
-      cb({model,mixer});
-    }, undefined, ()=>{});
+  sceneEl.addEventListener("arError", (event) => {
+    console.log("MindAR failed to start");
+  });
+
+  function setupAllEventListeners() {
+    console.log("Setting up all event listeners");
+    
+    // 設置按鈕點擊事件
+    setupButtonClickEvents();
+    
+    // 設置視頻事件
+    setupVideoEvents();
+    
+    // 設置浣熊動畫
+    setupRaccoonAnimation();
+    
+    // 設置懸停效果
+    setupHoverEffects();
   }
 
-  // ═══════════════════════════════════════════════════════
-  // AR MODULE
-  // ═══════════════════════════════════════════════════════
-  function mkARModule(indexedData) {
+  function setupButtonClickEvents() {
+    const clickableButtons = [
+      { id: 'btn-website', url: 'https://isaoinvest.com' },
+      { id: 'btn-email', url: 'mailto:isaoinvest@gmail.com' },
+      { id: 'btn-phone', url: 'tel:+886920820259' },
+      { id: 'btn-line', url: 'https://line.me/R/ti/p/@722fdkca' },
+      { id: 'btn-youtube', url: 'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ' },
+      { id: 'btn-ig', url: 'https://www.instagram.com/isaoinvest' },
+      { id: 'btn-fb', url: 'https://www.facebook.com/profile.php?id=61552552833098' }
+    ];
 
-    // role mapping（用 JSON .name 欄位，不依賴 array index）
-    const nameToRole = new Map();
-    const ROLES = ['card','video'];
-    indexedData.forEach((d,i)=>{ if(d) nameToRole.set(d.name, ROLES[i]); });
-
-    let cardGroup, raccoonData=null;
-    let videoGroup, videoMesh, videoEl, videoTex;
-    let videoPlaying=false, videoHasInteracted=false;
-    let holoVisible=true;
-
-    const clock = new THREE.Clock();
-    const scanEl  = document.getElementById('scan-ov');
-    const vpPanel = document.getElementById('video-panel');
-    const vpIcon  = document.getElementById('vp-icon');
-    const vpTxt   = document.getElementById('vp-txt');
-
-    // ★(2) 嚴格互斥狀態機：同一時刻只能有一個 target 有效
-    const S = { active: null }; // 'card' | 'video' | null
-
-    function clearAll() {
-      // 清除正面
-      if (cardGroup) cardGroup.visible=false;
-      hideCard();
-      // 清除背面
-      if (videoGroup) videoGroup.visible=false;
-      vpPanel.classList.remove('show');
-      if (videoEl) { videoEl.pause(); videoPlaying=false; }
-      vpIcon.textContent='▶'; vpTxt.textContent='點擊 播放影片';
-      document.getElementById('bb-play').textContent='▶ 播放';
-      S.active=null;
-    }
-
-    function activateCard(detail) {
-      clearAll(); // 先清除所有狀態
-      const {position:p,rotation:r,scale:s}=detail;
-      cardGroup.position.set(p.x,p.y,p.z);
-      cardGroup.quaternion.set(r.x,r.y,r.z,r.w);
-      cardGroup.scale.setScalar(s);
-      cardGroup.visible=true;
-      showCard();
-      scanEl.classList.add('hidden');
-      S.active='card';
-      doFlash();
-      showSt('🦝 名片正面！', 3000);
-    }
-
-    function activateVideo(detail) {
-      clearAll(); // 先清除所有狀態
-      const {position:p,rotation:r,scale:s}=detail;
-      videoGroup.position.set(p.x,p.y,p.z);
-      videoGroup.quaternion.set(r.x,r.y,r.z,r.w);
-      videoGroup.scale.setScalar(s);
-      videoGroup.visible=true;
-      vpPanel.classList.add('show');
-      scanEl.classList.add('hidden');
-      S.active='video';
-      doFlash();
-      if (!videoHasInteracted&&videoEl) {
-        videoEl.muted=true; videoEl.currentTime=0;
-        videoEl.play().then(()=>{
-          videoPlaying=true;
-          vpIcon.textContent='⏸'; vpTxt.textContent='點擊 暫停影片';
-        }).catch(()=>{});
-      }
-      showSt('🎬 名片背面！影片播放中');
-    }
-
-    function onFound({detail}) {
-      const role=nameToRole.get(detail.name);
-      if (!role) return;
-      if (role==='card') activateCard(detail);
-      else activateVideo(detail);
-    }
-
-    function onUpdated({detail}) {
-      const role=nameToRole.get(detail.name);
-      if (!role || role!==S.active) return; // 只更新正在 active 的那一個
-      const {position:p,rotation:r,scale:s}=detail;
-      if (role==='card') {
-        cardGroup.position.set(p.x,p.y,p.z);
-        cardGroup.quaternion.set(r.x,r.y,r.z,r.w);
-        cardGroup.scale.setScalar(s);
+    clickableButtons.forEach(button => {
+      const element = document.querySelector('#' + button.id);
+      if (element) {
+        console.log('Setting up click for:', button.id);
+        element.addEventListener("click", event => {
+          console.log("Button clicked:", button.id, "URL:", button.url);
+          event.stopPropagation();
+          event.preventDefault();
+          
+          try {
+            if (button.url.startsWith('mailto:') || button.url.startsWith('tel:')) {
+              window.location.href = button.url;
+            } else {
+              window.open(button.url, '_blank');
+            }
+            console.log('Successfully opened:', button.url);
+          } catch (error) {
+            console.error('Error opening URL:', error);
+          }
+        });
       } else {
-        videoGroup.position.set(p.x,p.y,p.z);
-        videoGroup.quaternion.set(r.x,r.y,r.z,r.w);
-        videoGroup.scale.setScalar(s);
+        console.log('Button not found:', button.id);
       }
-    }
+    });
+  }
 
-    function onLost({detail}) {
-      const role=nameToRole.get(detail?.name||'');
-      if (!role || role!==S.active) return; // 只處理當前 active
-      clearAll();
-      scanEl.classList.remove('hidden');
-      showSt('🔍 請對準名片正面或背面');
-    }
+  function setupVideoEvents() {
+    const video = document.querySelector("#video1");
+    const videoElement = document.querySelector("#ar-video");
+    const videoTarget = document.querySelector("#video-target");
+    let playing = false;
+    let hasInteracted = false;
 
-    // 底部按鈕
-    function setupBtns() {
-      document.getElementById('bb-play').addEventListener('click',()=>{
-        if (!videoEl||S.active!=='video'){showToast('請先掃描名片背面');return;}
-        if (videoPlaying){
-          videoEl.pause(); videoPlaying=false;
-          vpIcon.textContent='▶'; vpTxt.textContent='點擊 播放影片';
-          document.getElementById('bb-play').textContent='▶ 播放';
+    if (videoElement && video) {
+      console.log("Setting up video events");
+      
+      videoElement.addEventListener("click", event => {
+        console.log("Video clicked, playing:", playing);
+        event.stopPropagation();
+        event.preventDefault();
+        
+        if (!hasInteracted) {
+          video.muted = false;
+          hasInteracted = true;
+          console.log("Video unmuted after user interaction");
+        }
+        
+        if (!playing) {
+          video.play().then(() => {
+            playing = true;
+            console.log("Video playing");
+          }).catch(error => {
+            console.error("Video play failed:", error);
+          });
         } else {
-          if (!videoHasInteracted){videoEl.muted=false;videoHasInteracted=true;}
-          videoEl.play().then(()=>{
-            videoPlaying=true;
-            vpIcon.textContent='⏸'; vpTxt.textContent='點擊 暫停影片';
-            document.getElementById('bb-play').textContent='⏸ 暫停';
-          }).catch(()=>{});
+          video.pause();
+          playing = false;
+          console.log("Video paused");
         }
       });
-      document.getElementById('bb-mute').addEventListener('click',()=>{
-        if (!videoEl) return;
-        videoEl.muted=!videoEl.muted;
-        document.getElementById('bb-mute').textContent=videoEl.muted?'🔇 靜音':'🔊 聲音';
-      });
-      document.getElementById('bb-holo').addEventListener('click',()=>{
-        holoVisible=!holoVisible;
-        if (cardGroup) cardGroup.visible = S.active==='card' && holoVisible;
-        if (holoVisible && S.active==='card') showCard(); else hideCard();
-        document.getElementById('bb-holo').classList.toggle('active',holoVisible);
-        showToast(holoVisible?'🔷 全息 ON':'🔲 全息 OFF');
-      });
-      document.getElementById('vp-play-btn').addEventListener('click',e=>{
-        e.stopPropagation();
-        document.getElementById('bb-play').click();
-      });
     }
 
-    return {
-      name:'ar-card',
-      onStart() {
-        const {scene,renderer,camera}=XR8.Threejs.xrScene();
+    if (videoTarget && video) {
+      videoTarget.addEventListener("targetFound", event => {
+        console.log("Video target found");
+        video.currentTime = 0;
+        
+        if (!hasInteracted) {
+          video.muted = true;
+          video.play().then(() => {
+            playing = true;
+            console.log("Video auto-playing (muted)");
+          }).catch(error => {
+            console.error("Auto-play failed:", error);
+          });
+        }
+      });
 
-        // ★ 黑屏修復
-        renderer.autoClear=false;
-        renderer.sortObjects=true;
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth,window.innerHeight,false);
-        renderer.domElement.style.cssText=
-          'position:fixed!important;top:0!important;left:0!important;'+
-          'width:100vw!important;height:100vh!important;z-index:0!important;';
+      videoTarget.addEventListener("targetLost", event => {
+        console.log("Video target lost, pausing video");
+        video.pause();
+        playing = false;
+      });
+    }
+  }
 
-        scene.add(new THREE.AmbientLight(0xffffff,1.1));
-        const dir=new THREE.DirectionalLight(0xffffff,.75);
-        dir.position.set(.5,2,1.5); scene.add(dir);
+  function setupRaccoonAnimation() {
+    const raccoonModel = document.querySelector("#raccoon-model");
+    if (raccoonModel) {
+      console.log("Raccoon model found - animation-mixer will handle built-in animations");
+      
+      // 監聽模型載入事件
+      raccoonModel.addEventListener("model-loaded", () => {
+        console.log("Raccoon model loaded - built-in animations should be playing");
+        
+        // 添加輕微的額外浮動效果
+        if (raccoonModel.object3D) {
+          gsap.to(raccoonModel.object3D.position, {
+            y: raccoonModel.object3D.position.y + 0.03,
+            duration: 3,
+            yoyo: true,
+            repeat: -1,
+            ease: "power1.inOut",
+          });
+          console.log("Added subtle floating animation to raccoon");
+        }
+      });
+    }
+  }
 
-        // 正面：浣熊 GLTF（3D AR 空間中浮動）
-        cardGroup=new THREE.Group(); cardGroup.visible=false; scene.add(cardGroup);
-        loadRaccoon(cardGroup,data=>{raccoonData=data;});
-
-        // 背面：影片平面
-        videoGroup=new THREE.Group(); videoGroup.visible=false; scene.add(videoGroup);
-        videoEl=document.createElement('video');
-        videoEl.src=AR_CONFIG.videoSrc; videoEl.loop=true; videoEl.muted=true;
-        videoEl.playsInline=true; videoEl.crossOrigin='anonymous';
-        videoEl.setAttribute('webkit-playsinline','true');
-        videoTex=new THREE.VideoTexture(videoEl);
-        videoTex.minFilter=videoTex.magFilter=THREE.LinearFilter;
-        videoTex.format=THREE.RGBAFormat;
-        videoMesh=new THREE.Mesh(
-          new THREE.PlaneGeometry(1.5,1.5*(9/16)),
-          new THREE.MeshBasicMaterial({map:videoTex,side:THREE.DoubleSide,toneMapped:false})
-        );
-        videoGroup.add(videoMesh);
-
-        setupBtns();
-        clock.start();
-        setTimeout(()=>showSt('請對準名片正面（浣熊）或背面（影片）',5000),600);
-      },
-      onUpdate() {
-        const delta=clock.getDelta();
-        if (raccoonData?.mixer) raccoonData.mixer.update(delta);
-        // 浣熊浮動
-        if (raccoonData?.model&&cardGroup.visible)
-          raccoonData.model.position.y=.08+Math.sin(clock.elapsedTime*1.2)*.022;
-      },
-      listeners:[
-        {event:'reality.imagefound',   process:onFound},
-        {event:'reality.imageupdated', process:onUpdated},
-        {event:'reality.imagelost',    process:onLost},
-      ],
-      onAttach() {
-        window.addEventListener('resize',()=>{
-          const{renderer}=XR8.Threejs.xrScene();
-          renderer.setSize(window.innerWidth,window.innerHeight,false);
+  function setupHoverEffects() {
+    const clickableElements = document.querySelectorAll(".clickable");
+    console.log("Found clickable elements:", clickableElements.length);
+    
+    clickableElements.forEach((element, index) => {
+      if (element.object3D) {
+        element.addEventListener("mouseenter", () => {
+          console.log('Mouse enter on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1.4, y: 1.4, z: 1.4, duration: 0.3
+          });
         });
-        document.addEventListener('visibilitychange',()=>{
-          if (document.hidden&&videoEl){videoEl.pause();videoPlaying=false;}
-          else if (S.active==='video'&&videoPlaying&&videoEl) videoEl.play().catch(()=>{});
+        
+        element.addEventListener("mouseleave", () => {
+          console.log('Mouse leave on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1, y: 1, z: 1, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("touchstart", (e) => {
+          console.log('Touch start on element', index, '(' + element.id + ')');
+          gsap.to(element.object3D.scale, {
+            x: 1.4, y: 1.4, z: 1.4, duration: 0.3
+          });
+        });
+        
+        element.addEventListener("touchend", (e) => {
+          console.log('Touch end on element', index, '(' + element.id + ')');
+          setTimeout(() => {
+            gsap.to(element.object3D.scale, {
+              x: 1, y: 1, z: 1, duration: 0.3
+            });
+          }, 100);
         });
       }
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // MAIN — ★(1) 移除 Permission Gate，直接啟動
-  // iOS 14+ 策略：XR8.run 內部在第一幀自行申請相機權限（一次 Yes）
-  // DeviceMotion/Orientation 在同一個 user gesture 內同步申請
-  // ═══════════════════════════════════════════════════════
-  let _xrReady=false, _loadResult=null;
-
-  window.addEventListener('xrloaded',()=>{ _xrReady=true; });
-
-  async function loadTargets() {
-    const indexed=[];
-    for (const [i,path] of AR_CONFIG.targetJsonPaths.entries()) {
-      try {
-        const r=await fetch(path);
-        if (!r.ok) throw new Error('HTTP '+r.status);
-        const text=await r.text();
-        let d;
-        try { d=JSON.parse(text); }
-        catch { throw new Error('JSON parse error'); }
-        indexed.push(d);
-      } catch(e) {
-        indexed.push(null);
-        console.warn('target['+i+'] load fail:',e.message);
-      }
-    }
-    _loadResult={valid:indexed.filter(Boolean), indexed};
-  }
-
-  async function requestSensorPermissions() {
-    // 在 user gesture 內一次性申請 DeviceMotion + Orientation
-    for (const E of [DeviceMotionEvent,DeviceOrientationEvent]) {
-      if (typeof E!=='undefined'&&typeof E.requestPermission==='function') {
-        try { await E.requestPermission(); } catch {}
-      }
-    }
-  }
-
-  async function startXR8() {
-    showSt('AR 載入中…',6000);
-    let w=0;
-    while ((!_loadResult||!_xrReady)&&w<12000) {
-      await new Promise(r=>setTimeout(r,200)); w+=200;
-    }
-    if (!_loadResult?.valid?.length||!_xrReady) {
-      showSt('❌ AR 初始化失敗，請重新整理',8000); return;
-    }
-    const {valid,indexed}=_loadResult;
-    XR8.XrController.configure({disableWorldTracking:true, imageTargetData:valid});
-    XR8.addCameraPipelineModules([
-      XR8.GlTextureRenderer.pipelineModule(),
-      XR8.Threejs.pipelineModule(),
-      XR8.XrController.pipelineModule(),
-      mkARModule(indexed),
-    ]);
-    XR8.run({canvas:document.getElementById('renderCanvas')});
-  }
-
-  window.addEventListener('xrerror',e=>{
-    showSt('❌ AR 錯誤：'+JSON.stringify(e.detail),10000);
-    console.error('xrerror',e.detail);
-  });
-
-  // ★(1) 頁面載入後立即自動觸發 —— 第一次觸碰螢幕時申請所有權限
-  // 策略：用一個透明的全螢幕 overlay，使用者觸碰一下即可
-  // 這樣所有 iOS 權限（相機、Motion、Orientation）都在同一個 gesture 完成
-  (() => {
-    const overlay = document.createElement('div');
-    Object.assign(overlay.style,{
-      position:'fixed',top:0,left:0,width:'100%',height:'100%',
-      zIndex:9999, display:'flex', flexDirection:'column',
-      alignItems:'center', justifyContent:'center', gap:'16px',
-      background:'rgba(0,4,16,.95)', cursor:'pointer',
     });
-    overlay.innerHTML=`
-      <div style="font-size:40px;animation:pulse 2s infinite">🦝</div>
-      <div style="font-family:monospace;font-size:13px;letter-spacing:3px;
-        color:rgba(0,200,255,.8);text-align:center">AR BUSINESS CARD<br>
-        <span style="font-size:10px;opacity:.5;letter-spacing:1px">TAP TO START</span>
-      </div>
-      <style>@keyframes pulse{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:.6;transform:scale(1.08)}}</style>
-    `;
-    // 一次 tap → 申請所有權限 → 啟動 XR8
-    overlay.addEventListener('click', async function tap() {
-      overlay.removeEventListener('click', tap);
-      overlay.remove();
-      await requestSensorPermissions(); // 在同一 user gesture 申請 Motion/Orientation
-      startXR8();                       // XR8.run 內部申請相機（一次 Yes）
-    }, {once:true});
-    document.body.appendChild(overlay);
+  }
+});
 
-    // 預載 target JSON（不需要 gesture）
-    loadTargets();
-  })();
-  </script>
+// 調試用的全域點擊監聽器
+document.addEventListener('click', function(event) {
+  console.log('Global click detected at:', event.clientX, event.clientY);
+  console.log('Target element:', event.target);
+});
+
+console.log("AR Business Card system initialized");
+</script>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  overflow: hidden;
+}
+</style>
+</head>
+<body>
+<a-scene
+  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
+  color-space="sRGB"
+  renderer="colorManagement: true, physicallyCorrectLights"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+>
+  <a-assets>
+    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" alt="Profile Photo" />
+    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" alt="Website Button" />
+    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" alt="Email Button" />
+    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" alt="Phone Button" />
+    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" alt="LINE Button" />
+    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" alt="YouTube Button" />
+    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" alt="Instagram Button" />
+    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" alt="Facebook Button" />
+    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
+    <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
+  </a-assets>
+
+  <!-- 按照官方文檔的相機配置 -->
+  <a-camera 
+    position="0 0 0" 
+    look-controls="enabled: false" 
+    cursor="fuse: false; rayOrigin: mouse;" 
+    raycaster="near: 10; far: 10000; objects: .clickable">
+  </a-camera>
+
+  <a-entity mindar-image-target="targetIndex: 0">
+    <a-entity
+      text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
+      position="1.2 0.68 -1.5"
+      scale="2 2 2"
+    ></a-entity>
+    
+    <!-- 小浣熊模型 - 按照官方文檔設置 -->
+    <a-gltf-model
+      id="raccoon-model"
+      rotation="0 0 0"
+      position="-0.25 -0.15 0"
+      scale="0.09 0.09 0.09"
+      src="#raccoonModel"
+      animation-mixer
+    ></a-gltf-model>
+    
+    <a-image
+      src="#profile"
+      width="0.55"
+      height="0.55"
+      position="0.6 0.9 -1.5"
+      rotation="0 0 0"
+    ></a-image>
+    
+    <!-- 按鈕元素 - 確保正確的class和屬性 -->
+    <a-image
+      id="btn-website"
+      src="#website"
+      width="0.65"
+      height="0.25"
+      position="0.6 0.4 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-email"
+      src="#Email"
+      width="0.65"
+      height="0.25"
+      position="0.6 0.1 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-phone"
+      src="#phone"
+      width="0.65"
+      height="0.23"
+      position="0.6 -0.2 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-line"
+      src="#image-LINE"
+      width="0.3"
+      height="0.3"
+      position="0.6 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-youtube"
+      src="#image-Youtube"
+      width="0.3"
+      height="0.3"
+      position="0.2 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-ig"
+      src="#image-IG"
+      width="0.3"
+      height="0.3"
+      position="-0.2 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+    
+    <a-image
+      id="btn-fb"
+      src="#image-FB"
+      width="0.3"
+      height="0.3"
+      position="-0.6 -0.65 -1.5"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-image>
+  </a-entity>
+
+  <a-entity id="video-target" mindar-image-target="targetIndex: 1">
+    <a-video
+      id="ar-video"
+      src="#video1"
+      height="1.05"
+      width="1.5"
+      position="0 0 0"
+      rotation="0 0 0"
+      class="clickable"
+      opacity="1"
+    ></a-video>
+  </a-entity>
+</a-scene>
 </body>
 </html>
