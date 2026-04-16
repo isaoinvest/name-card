@@ -7,14 +7,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>AR 名片 · MingHsun Li</title>
 
-  <!-- ══════════════════════════════════════════════
-       ★★★  CONFIG  ★★★
-  ══════════════════════════════════════════════ -->
   <script>
   const AR_CONFIG = {
     targetJsonPaths: [
-      './image-targets/isaofront.json',   // [0] → 正面 card
-      './image-targets/isaoback.json',    // [1] → 背面 video
+      './image-targets/isaofront.json',
+      './image-targets/isaoback.json',
     ],
     videoSrc: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
     raccoonSrc: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf',
@@ -43,80 +40,42 @@
 
   <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;
-    touch-action:none;-webkit-user-select:none;user-select:none}
-  #renderCanvas{position:fixed!important;top:0!important;left:0!important;
-    width:100vw!important;height:100vh!important;z-index:0;display:block}
-  [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{
-    visibility:hidden!important;pointer-events:none!important}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-user-select:none;user-select:none}
+  #renderCanvas{position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:0;display:block}
+  [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{visibility:hidden!important;pointer-events:none!important}
   [class*="watermark"],[id*="watermark"]{display:none!important}
 
   @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.2}}
   @keyframes scan{0%{transform:translateY(0)}50%{transform:translateY(216px)}100%{transform:translateY(0)}}
 
-  /* ─── 掃描 UI ─── */
-  #scan-ov{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:22px;pointer-events:none;opacity:1;transition:opacity .5s}
+  #scan-ov{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;pointer-events:none;opacity:1;transition:opacity .5s}
   #scan-ov.hidden{opacity:0}
-  .sbox{width:218px;height:218px;position:relative;
-    border:1.5px solid rgba(0,210,255,.35);border-radius:12px}
-  .sline{position:absolute;height:2px;width:100%;top:0;
-    background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);
-    animation:scan 2s ease-in-out infinite}
+  .sbox{width:218px;height:218px;position:relative;border:1.5px solid rgba(0,210,255,.35);border-radius:12px}
+  .sline{position:absolute;height:2px;width:100%;top:0;background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);animation:scan 2s ease-in-out infinite}
   .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.9);border-style:solid;border-width:0}
   .c-tl{top:-2px;left:-2px;border-top-width:2.5px;border-left-width:2.5px;border-radius:4px 0 0 0}
   .c-tr{top:-2px;right:-2px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 4px 0 0}
   .c-bl{bottom:-2px;left:-2px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 4px}
   .c-br{bottom:-2px;right:-2px;border-bottom-width:2.5px;border-right-width:2.5px;border-radius:0 0 4px 0}
-  #scan-label{font-family:monospace;font-size:11px;letter-spacing:2px;
-    color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
+  #scan-label{font-family:monospace;font-size:11px;letter-spacing:2px;color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
 
-  /* ─── Status ─── */
-  #status{position:fixed;top:14px;left:50%;transform:translateX(-50%);
-    padding:7px 18px;background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);
-    border-radius:20px;backdrop-filter:blur(10px);font-family:monospace;font-size:11px;
-    color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;
-    white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+  #status{position:fixed;top:14px;left:50%;transform:translateX(-50%);padding:7px 18px;background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);border-radius:20px;backdrop-filter:blur(10px);font-family:monospace;font-size:11px;color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;white-space:nowrap}
   #status.show{opacity:1}
 
-  /* ─── Flash ─── */
-  #flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;
-    opacity:0;transition:opacity .6s;
-    background:radial-gradient(circle,rgba(0,210,255,.15),transparent 68%)}
+  #flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;opacity:0;transition:opacity .6s;background:radial-gradient(circle,rgba(0,210,255,.15),transparent 68%)}
   #flash.on{opacity:1}
 
-  /* ─── Toast ─── */
-  #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    padding:9px 22px;background:rgba(0,30,90,.94);border:1px solid rgba(0,200,255,.5);
-    border-radius:28px;font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);
-    z-index:200;opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap}
+  #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:9px 22px;background:rgba(0,30,90,.94);border:1px solid rgba(0,200,255,.5);border-radius:28px;font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);z-index:200;opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap}
   #toast.show{opacity:1}
 
-  /* ─── 影片控制 ─── */
-  #video-panel{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
-    z-index:60;opacity:0;transition:opacity .4s,transform .4s;
-    pointer-events:none;white-space:nowrap}
+  #video-panel{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);z-index:60;opacity:0;transition:opacity .4s,transform .4s;pointer-events:none;white-space:nowrap}
   #video-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
-  .vp-pill{display:flex;align-items:center;gap:10px;padding:11px 22px;
-    background:rgba(0,6,22,.92);border:1px solid rgba(0,175,255,.35);border-radius:50px;
-    backdrop-filter:blur(14px);font-family:monospace;font-size:11px;
-    letter-spacing:1.5px;color:rgba(0,200,255,.88);cursor:pointer;
-    -webkit-tap-highlight-color:transparent}
+  .vp-pill{display:flex;align-items:center;gap:10px;padding:11px 22px;background:rgba(0,6,22,.92);border:1px solid rgba(0,175,255,.35);border-radius:50px;backdrop-filter:blur(14px);font-family:monospace;font-size:11px;letter-spacing:1.5px;color:rgba(0,200,255,.88);cursor:pointer}
   .vp-pill:active{background:rgba(0,50,130,.6)}
-  #vp-icon{font-size:18px}
 
-  /* ─── 底部控制列 ─── */
-  .btn-bar{position:fixed;bottom:0;left:0;right:0;height:64px;z-index:600;
-    display:flex;align-items:center;justify-content:center;gap:12px;
-    background:rgba(0,4,14,.96);border-top:1px solid rgba(0,150,255,.18)}
-  .bb{height:40px;padding:0 18px;background:rgba(0,20,60,.8);
-    border:1px solid rgba(0,150,255,.35);border-radius:20px;
-    font-family:monospace;font-size:11px;color:rgba(0,200,255,.9);
-    cursor:pointer;-webkit-tap-highlight-color:transparent;
-    display:flex;align-items:center;gap:6px;letter-spacing:.5px}
+  .btn-bar{position:fixed;bottom:0;left:0;right:0;height:64px;z-index:600;display:flex;align-items:center;justify-content:center;gap:12px;background:rgba(0,4,14,.96);border-top:1px solid rgba(0,150,255,.18)}
+  .bb{height:40px;padding:0 18px;background:rgba(0,20,60,.8);border:1px solid rgba(0,150,255,.35);border-radius:20px;font-family:monospace;font-size:11px;color:rgba(0,200,255,.9);cursor:pointer;display:flex;align-items:center;gap:6px;letter-spacing:.5px}
   .bb:active{background:rgba(0,80,200,.5);border-color:rgba(0,220,255,.8)}
-  .bb.active{background:rgba(0,60,160,.6);border-color:rgba(0,220,255,.7)}
   </style>
 </head>
 <body>
@@ -125,19 +84,17 @@
   <div id="flash"></div>
   <div id="toast"></div>
 
-  <!-- 掃描 UI -->
   <div id="scan-ov">
     <div class="sbox">
       <div class="sline"></div>
       <div class="corn c-tl"></div><div class="corn c-tr"></div>
       <div class="corn c-bl"></div><div class="corn c-br"></div>
     </div>
-    <div id="scan-label">AR READY<br>請對準名片正面或背面</div>
+    <div id="scan-label">AR READY<br>請對準名片正面</div>
   </div>
 
   <div id="status"></div>
 
-  <!-- 影片控制面板 -->
   <div id="video-panel">
     <div class="vp-pill" id="vp-play-btn">
       <span id="vp-icon">▶</span>
@@ -145,7 +102,6 @@
     </div>
   </div>
 
-  <!-- 底部控制列 -->
   <div class="btn-bar">
     <button class="bb" id="bb-play">▶ 播放</button>
     <button class="bb" id="bb-mute">🔇 靜音</button>
@@ -153,7 +109,7 @@
   </div>
 
   <script>
-  // ═══ UI HELPERS ══════════════════════════════════════
+  // UI Helpers
   let _stT, _toastT;
   function showSt(msg, dur=3000) {
     const e=document.getElementById('status');
@@ -170,61 +126,54 @@
     f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),700);
   }
 
-  // ═══ 社群 & 聯絡按鈕事件（現在全部走 3D raycast） ════════════════════════════════════
   function createRoundedRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);
     ctx.closePath();
   }
 
   function createContactButtonCanvas(contact) {
-    const w = 520, h = 88;
+    const w = 680, h = 145;
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
 
-    // 背景漸層（模擬原 CSS 3D 卡片）
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(255,255,255,0.08)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+    const grad = ctx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0,'rgba(255,255,255,0.1)');
+    grad.addColorStop(1,'rgba(0,0,0,0.32)');
     ctx.fillStyle = grad;
-    createRoundedRect(ctx, 0, 0, w, h, 18);
+    createRoundedRect(ctx,0,0,w,h,28);
     ctx.fill();
 
-    // 左側 accent 條
     ctx.fillStyle = contact.accent;
-    createRoundedRect(ctx, 0, 0, 42, h, 18);
+    createRoundedRect(ctx,0,0,65,h,28);
     ctx.fill();
 
-    // Icon (emoji)
-    ctx.font = 'bold 46px sans-serif';
+    ctx.font = 'bold 98px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 20;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(contact.icon, 32, h/2 + 2);
+    ctx.fillText(contact.icon, 40, h/2 + 6);
 
-    // 文字
     ctx.shadowBlur = 0;
-    ctx.font = '600 31px Arial, sans-serif';
+    ctx.font = '600 68px Arial, sans-serif';
     ctx.fillStyle = '#ddf4ff';
     ctx.textAlign = 'left';
-    ctx.fillText(contact.label, 92, h/2 + 1);
+    ctx.fillText(contact.label, 135, h/2 + 4);
 
-    // 箭頭
-    ctx.font = 'bold 38px sans-serif';
-    ctx.fillStyle = 'rgba(0,180,255,0.9)';
+    ctx.font = 'bold 82px sans-serif';
+    ctx.fillStyle = 'rgba(0,190,255,0.95)';
     ctx.textAlign = 'right';
-    ctx.fillText('›', w - 28, h/2 + 3);
+    ctx.fillText('›', w-45, h/2 + 6);
 
     return canvas;
   }
@@ -233,23 +182,17 @@
     const canvas = document.createElement('canvas');
     canvas.width = widthPx; canvas.height = heightPx;
     const ctx = canvas.getContext('2d');
-
-    ctx.shadowColor = 'rgba(0,210,255,0.9)';
-    ctx.shadowBlur = 14;
+    ctx.shadowColor = 'rgba(0,220,255,0.95)';
+    ctx.shadowBlur = 22;
     ctx.font = `700 ${fontSize}px Arial, sans-serif`;
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, widthPx/2, heightPx/2 + 2);
-
+    ctx.fillText(text, widthPx/2, heightPx/2 + 6);
     return canvas;
   }
 
-  // ═══════════════════════════════════════════════════════
-  // AR MODULE
-  // ═══════════════════════════════════════════════════════
   function mkARModule(indexedData) {
-
     const nameToRole = new Map();
     const ROLES = ['card','video'];
     indexedData.forEach((d,i)=>{ if(d) nameToRole.set(d.name, ROLES[i]); });
@@ -258,18 +201,14 @@
     let videoGroup, videoMesh, videoEl, videoTex;
     let videoPlaying = false, videoHasInteracted = false;
     let holoVisible = true;
-
-    // 3D 互動用
-    let raycaster;
-    let interactiveObjects = [];
+    let raycaster, interactiveObjects = [];
     let cameraRef, rendererRef;
 
     const clock = new THREE.Clock();
-    const scanEl  = document.getElementById('scan-ov');
+    const scanEl = document.getElementById('scan-ov');
     const vpPanel = document.getElementById('video-panel');
-    const vpIcon  = document.getElementById('vp-icon');
-    const vpTxt   = document.getElementById('vp-txt');
-
+    const vpIcon = document.getElementById('vp-icon');
+    const vpTxt = document.getElementById('vp-txt');
     const S = { active: null };
 
     function clearAll() {
@@ -282,156 +221,97 @@
       S.active = null;
     }
 
-    function activateCard(detail) {
-      clearAll();
-      const {position:p, rotation:r, scale:s} = detail;
-      cardGroup.position.set(p.x, p.y, p.z);
-      cardGroup.quaternion.set(r.x, r.y, r.z, r.w);
-      cardGroup.scale.setScalar(s);
-      cardGroup.visible = true;
-      scanEl.classList.add('hidden');
-      S.active = 'card';
-      doFlash();
-      showSt('🦝 名片正面！3D 內容已浮現', 3000);
-    }
-
-    function activateVideo(detail) {
-      clearAll();
-      const {position:p, rotation:r, scale:s} = detail;
-      videoGroup.position.set(p.x, p.y, p.z);
-      videoGroup.quaternion.set(r.x, r.y, r.z, r.w);
-      videoGroup.scale.setScalar(s);
-      videoGroup.visible = true;
-      vpPanel.classList.add('show');
-      scanEl.classList.add('hidden');
-      S.active = 'video';
-      doFlash();
-      if (!videoHasInteracted && videoEl) {
-        videoEl.muted = true; videoEl.currentTime = 0;
-        videoEl.play().then(()=>{ videoPlaying = true; vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片'; }).catch(()=>{});
-      }
-      showSt('🎬 名片背面！影片播放中');
-    }
-
-    function onFound({detail}) {
-      const role = nameToRole.get(detail.name);
-      if (!role) return;
-      if (role === 'card') activateCard(detail);
-      else activateVideo(detail);
-    }
-
-    function onUpdated({detail}) {
-      const role = nameToRole.get(detail.name);
-      if (!role || role !== S.active) return;
-      const {position:p, rotation:r, scale:s} = detail;
-      if (role === 'card') {
-        cardGroup.position.set(p.x, p.y, p.z);
-        cardGroup.quaternion.set(r.x, r.y, r.z, r.w);
-        cardGroup.scale.setScalar(s);
-      } else {
-        videoGroup.position.set(p.x, p.y, p.z);
-        videoGroup.quaternion.set(r.x, r.y, r.z, r.w);
-        videoGroup.scale.setScalar(s);
-      }
-    }
-
-    function onLost({detail}) {
-      const role = nameToRole.get(detail?.name || '');
-      if (!role || role !== S.active) return;
-      clearAll();
-      scanEl.classList.remove('hidden');
-      showSt('🔍 請對準名片正面或背面');
-    }
-
-    // 3D 名片內容建立（完全取代 DOM）
     function create3DNameCardUI() {
+      const SCALE = 1 / 780;
       const loader = new THREE.TextureLoader();
-      const SCALE = 1 / 650;   // 畫布像素 → 3D 世界單位比例
 
-      // 1. 浣熊位置微調（左側留空間給 UI）
+      // 浣熊
       if (raccoonData?.model) {
-        raccoonData.model.position.set(-0.58, 0.26, 0.05);
-        raccoonData.model.scale.setScalar(0.115);
+        raccoonData.model.position.set(-0.72, 0.38, 0.06);
+        raccoonData.model.scale.setScalar(0.138);
       }
 
-      // 2. 個人大頭照（圓形 + 發光邊框）
+      // 大頭照
       const profileCanvas = document.createElement('canvas');
-      profileCanvas.width = 320; profileCanvas.height = 320;
+      profileCanvas.width = 420; profileCanvas.height = 420;
       const pctx = profileCanvas.getContext('2d');
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         pctx.save();
         pctx.beginPath();
-        pctx.arc(160, 160, 138, 0, Math.PI * 2);
+        pctx.arc(210, 210, 178, 0, Math.PI*2);
         pctx.clip();
-        pctx.drawImage(img, 0, 0, 320, 320);
+        pctx.drawImage(img, 0, 0, 420, 420);
         pctx.restore();
-
-        // 發光邊框
-        pctx.shadowColor = '#00d4ff';
-        pctx.shadowBlur = 22;
-        pctx.lineWidth = 22;
-        pctx.strokeStyle = 'rgba(0,220,255,0.85)';
+        pctx.shadowColor = '#00f0ff';
+        pctx.shadowBlur = 32;
+        pctx.lineWidth = 28;
+        pctx.strokeStyle = 'rgba(0,240,255,0.9)';
         pctx.beginPath();
-        pctx.arc(160, 160, 152, 0, Math.PI * 2);
+        pctx.arc(210, 210, 195, 0, Math.PI*2);
         pctx.stroke();
 
         const tex = new THREE.CanvasTexture(profileCanvas);
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
-        const geo = new THREE.PlaneGeometry(0.36, 0.36);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(0.62, 0.48, 0.13);   // 右上方，略高於卡片
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.48, 0.48),
+          new THREE.MeshBasicMaterial({map: tex, transparent: true, side: THREE.DoubleSide})
+        );
+        mesh.position.set(0.75, 0.62, 0.16);
         cardGroup.add(mesh);
       };
       img.src = AR_CONFIG.profile.photo;
 
-      // 3. 姓名 + 職稱（畫布文字）
-      const nameCanvas = createTextCanvas(AR_CONFIG.profile.name, 58, 480, 92);
-      const nameTex = new THREE.CanvasTexture(nameCanvas);
-      const nameMat = new THREE.MeshBasicMaterial({ map: nameTex, transparent: true, side: THREE.DoubleSide });
-      const nameMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.52 * SCALE * 480, 0.52 * SCALE * 92), nameMat);
-      nameMesh.position.set(0.62, 0.28, 0.11);
+      // 姓名 (字體放大2倍)
+      const nameCanvas = createTextCanvas(AR_CONFIG.profile.name, 128, 720, 160);
+      const nameMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.78 * SCALE * 720, 0.78 * SCALE * 160),
+        new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(nameCanvas), transparent: true, side: THREE.DoubleSide})
+      );
+      nameMesh.position.set(0.78, 0.38, 0.14);
       cardGroup.add(nameMesh);
 
-      const titleCanvas = createTextCanvas(AR_CONFIG.profile.title.toUpperCase(), 26, 420, 52, '#00d4ff');
-      const titleTex = new THREE.CanvasTexture(titleCanvas);
-      const titleMat = new THREE.MeshBasicMaterial({ map: titleTex, transparent: true, side: THREE.DoubleSide });
-      const titleMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.48 * SCALE * 420, 0.48 * SCALE * 52), titleMat);
-      titleMesh.position.set(0.62, 0.19, 0.105);
+      // 職稱
+      const titleCanvas = createTextCanvas(AR_CONFIG.profile.title.toUpperCase(), 58, 580, 88, '#00e8ff');
+      const titleMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.68 * SCALE * 580, 0.68 * SCALE * 88),
+        new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(titleCanvas), transparent: true, side: THREE.DoubleSide})
+      );
+      titleMesh.position.set(0.78, 0.25, 0.135);
       cardGroup.add(titleMesh);
 
-      // 4. 三個聯絡按鈕（完整畫在單一畫布上）
+      // 聯絡按鈕 (放大 2.5 倍)
       AR_CONFIG.contacts.forEach((contact, i) => {
         const btnCanvas = createContactButtonCanvas(contact);
-        const tex = new THREE.CanvasTexture(btnCanvas);
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
-        const geo = new THREE.PlaneGeometry(0.78, 0.135);
-        const mesh = new THREE.Mesh(geo, mat);
-
-        mesh.position.set(0.62, 0.05 - i * 0.16, 0.09);   // 垂直堆疊在姓名下方
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.95, 0.37),
+          new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(btnCanvas), transparent: true, side: THREE.DoubleSide})
+        );
+        mesh.position.set(0.78, 0.04 - i * 0.42, 0.12);
         mesh.userData = { type: 'contact', url: contact.url };
         interactiveObjects.push(mesh);
         cardGroup.add(mesh);
       });
 
-      // 5. 社群 ICON（四個獨立平面）
-      const socialStartX = -0.29;
+      // 社群 ICON (放大 2.5 倍)
+      const socialStartX = -0.78;
       AR_CONFIG.socials.forEach((soc, i) => {
         loader.load(soc.img, (tex) => {
-          const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
-          const geo = new THREE.PlaneGeometry(0.105, 0.105);
-          const mesh = new THREE.Mesh(geo, mat);
-          mesh.position.set(socialStartX + i * 0.145, -0.34, 0.085);
+          const mesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.265, 0.265),
+            new THREE.MeshBasicMaterial({map: tex, transparent: true, side: THREE.DoubleSide})
+          );
+          mesh.position.set(socialStartX + i * 0.36, -0.52, 0.11);
           mesh.userData = { type: 'social', url: soc.url };
           interactiveObjects.push(mesh);
           cardGroup.add(mesh);
         });
       });
+    }
 
-      // 6. Raycaster 觸控偵測
+    function setupRaycaster() {
       raycaster = new THREE.Raycaster();
-      const touchHandler = (e) => {
+      document.addEventListener('touchstart', (e) => {
         if (S.active !== 'card' || !cardGroup.visible || e.touches.length === 0) return;
         const touch = e.touches[0];
         const rect = rendererRef.domElement.getBoundingClientRect();
@@ -439,23 +319,18 @@
         const y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(new THREE.Vector2(x, y), cameraRef);
-        const intersects = raycaster.intersectObjects(interactiveObjects, true);
-
+        const intersects = raycaster.intersectObjects(interactiveObjects, false);
         if (intersects.length > 0) {
           let obj = intersects[0].object;
-          while (obj && !obj.userData.url) obj = obj.parent;
-          if (obj && obj.userData.url) {
-            e.preventDefault();
+          if (obj.userData.url) {
             doFlash();
             window.open(obj.userData.url, '_blank', 'noopener');
-            showToast('已開啟 ' + (obj.userData.type === 'contact' ? '聯絡' : '社群'));
+            showToast(obj.userData.type === 'social' ? '開啟社群' : '開啟聯絡');
           }
         }
-      };
-      document.addEventListener('touchstart', touchHandler, { passive: false });
+      }, { passive: false });
     }
 
-    // 底部按鈕
     function setupBtns() {
       document.getElementById('bb-play').addEventListener('click', () => {
         if (!videoEl || S.active !== 'video') { showToast('請先掃描名片背面'); return; }
@@ -473,104 +348,131 @@
         }
       });
       document.getElementById('bb-mute').addEventListener('click', () => {
-        if (!videoEl) return;
-        videoEl.muted = !videoEl.muted;
-        document.getElementById('bb-mute').textContent = videoEl.muted ? '🔇 靜音' : '🔊 聲音';
+        if (videoEl) {
+          videoEl.muted = !videoEl.muted;
+          document.getElementById('bb-mute').textContent = videoEl.muted ? '🔇 靜音' : '🔊 聲音';
+        }
       });
       document.getElementById('bb-holo').addEventListener('click', () => {
         holoVisible = !holoVisible;
         if (cardGroup) cardGroup.visible = (S.active === 'card') && holoVisible;
         document.getElementById('bb-holo').classList.toggle('active', holoVisible);
-        showToast(holoVisible ? '🔷 全息 ON（3D 內容已浮現）' : '🔲 全息 OFF');
+        showToast(holoVisible ? '🔷 全息 ON' : '🔲 全息 OFF');
       });
-      document.getElementById('vp-play-btn').addEventListener('click', e => {
-        e.stopPropagation();
-        document.getElementById('bb-play').click();
-      });
+      document.getElementById('vp-play-btn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('bb-play').click(); });
     }
 
     return {
       name: 'ar-card',
       onStart() {
         const { scene, renderer, camera } = XR8.Threejs.xrScene();
-        rendererRef = renderer;
-        cameraRef = camera;
+        rendererRef = renderer; cameraRef = camera;
 
         renderer.autoClear = false;
-        renderer.sortObjects = true;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight, false);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const dir = new THREE.DirectionalLight(0xffffff, 0.85);
-        dir.position.set(0.6, 2.2, 1.8); scene.add(dir);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+        const dir = new THREE.DirectionalLight(0xffffff, 0.95);
+        dir.position.set(0.8, 2.8, 2.2); scene.add(dir);
 
-        // 正面卡片群組（所有 3D 內容都在這裡）
         cardGroup = new THREE.Group();
         cardGroup.visible = false;
         scene.add(cardGroup);
 
-        // 載入浣熊
         const ldr = new THREE.GLTFLoader();
         ldr.load(AR_CONFIG.raccoonSrc, gltf => {
           const model = gltf.scene;
           const mixer = new THREE.AnimationMixer(model);
           gltf.animations.forEach(c => mixer.clipAction(c).play());
-          model.scale.setScalar(0.115);
-          model.position.set(-0.58, 0.26, 0.05);
+          model.scale.setScalar(0.138);
+          model.position.set(-0.72, 0.38, 0.06);
           cardGroup.add(model);
-          raccoonData = { model, mixer };
-          create3DNameCardUI();   // ← 浣熊載入後立即建立全部 3D 名片內容
+          raccoonData = {model, mixer};
+          create3DNameCardUI();
+          setupRaycaster();
         });
 
-        // 背面影片（保持平面）
+        // 背面影片
         videoGroup = new THREE.Group(); videoGroup.visible = false; scene.add(videoGroup);
         videoEl = document.createElement('video');
         videoEl.src = AR_CONFIG.videoSrc; videoEl.loop = true; videoEl.muted = true;
         videoEl.playsInline = true; videoEl.crossOrigin = 'anonymous';
-        videoEl.setAttribute('webkit-playsinline', 'true');
         videoTex = new THREE.VideoTexture(videoEl);
-        videoTex.minFilter = videoTex.magFilter = THREE.LinearFilter;
         videoMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.5, 1.5 * (9 / 16)),
-          new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide, toneMapped: false })
+          new THREE.PlaneGeometry(1.5, 0.84375),
+          new THREE.MeshBasicMaterial({map: videoTex, side: THREE.DoubleSide, toneMapped: false})
         );
         videoGroup.add(videoMesh);
 
         setupBtns();
         clock.start();
-        setTimeout(() => showSt('請對準名片正面（3D 內容會自動浮現）', 6000), 600);
+        setTimeout(() => showSt('請對準名片正面（3D 內容已放大）', 6000), 800);
       },
       onUpdate() {
         const delta = clock.getDelta();
         if (raccoonData?.mixer) raccoonData.mixer.update(delta);
         if (raccoonData?.model && cardGroup.visible) {
-          raccoonData.model.position.y = 0.26 + Math.sin(clock.elapsedTime * 1.35) * 0.028;
+          raccoonData.model.position.y = 0.38 + Math.sin(clock.elapsedTime * 1.35) * 0.032;
         }
       },
       listeners: [
-        { event: 'reality.imagefound',   process: onFound },
-        { event: 'reality.imageupdated', process: onUpdated },
-        { event: 'reality.imagelost',    process: onLost },
+        {event:'reality.imagefound', process:({detail}) => {
+          const role = nameToRole.get(detail.name);
+          if (!role) return;
+          clearAll();
+          if (role === 'card') {
+            cardGroup.position.set(detail.position.x, detail.position.y, detail.position.z);
+            cardGroup.quaternion.set(detail.rotation.x, detail.rotation.y, detail.rotation.z, detail.rotation.w);
+            cardGroup.scale.setScalar(detail.scale);
+            cardGroup.visible = true;
+            S.active = 'card';
+            doFlash();
+            showSt('🦝 3D 名片已浮現', 2500);
+          } else if (role === 'video') {
+            videoGroup.position.set(detail.position.x, detail.position.y, detail.position.z);
+            videoGroup.quaternion.set(detail.rotation.x, detail.rotation.y, detail.rotation.z, detail.rotation.w);
+            videoGroup.scale.setScalar(detail.scale);
+            videoGroup.visible = true;
+            vpPanel.classList.add('show');
+            S.active = 'video';
+            doFlash();
+            if (!videoHasInteracted && videoEl) {
+              videoEl.currentTime = 0;
+              videoEl.play().then(() => { videoPlaying = true; vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片'; });
+            }
+          }
+        }},
+        {event:'reality.imageupdated', process:({detail}) => {
+          const role = nameToRole.get(detail.name);
+          if (!role || role !== S.active) return;
+          if (role === 'card' && cardGroup) {
+            cardGroup.position.set(detail.position.x, detail.position.y, detail.position.z);
+            cardGroup.quaternion.set(detail.rotation.x, detail.rotation.y, detail.rotation.z, detail.rotation.w);
+            cardGroup.scale.setScalar(detail.scale);
+          } else if (role === 'video' && videoGroup) {
+            videoGroup.position.set(detail.position.x, detail.position.y, detail.position.z);
+            videoGroup.quaternion.set(detail.rotation.x, detail.rotation.y, detail.rotation.z, detail.rotation.w);
+            videoGroup.scale.setScalar(detail.scale);
+          }
+        }},
+        {event:'reality.imagelost', process:({detail}) => {
+          const role = nameToRole.get(detail?.name || '');
+          if (role && role === S.active) clearAll();
+          scanEl.classList.remove('hidden');
+        }}
       ],
       onAttach() {
         window.addEventListener('resize', () => {
-          const { renderer } = XR8.Threejs.xrScene();
+          const {renderer} = XR8.Threejs.xrScene();
           renderer.setSize(window.innerWidth, window.innerHeight, false);
-        });
-        document.addEventListener('visibilitychange', () => {
-          if (document.hidden && videoEl) videoEl.pause();
-          else if (S.active === 'video' && videoPlaying && videoEl) videoEl.play().catch(() => {});
         });
       }
     };
   }
 
-  // ═══════════════════════════════════════════════════════
   // MAIN
-  // ═══════════════════════════════════════════════════════
   let _xrReady = false, _loadResult = null;
-
   window.addEventListener('xrloaded', () => { _xrReady = true; });
 
   async function loadTargets() {
@@ -579,14 +481,13 @@
       try {
         const r = await fetch(path);
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        const text = await r.text();
-        indexed.push(JSON.parse(text));
-      } catch (e) {
+        indexed.push(JSON.parse(await r.text()));
+      } catch(e) {
         indexed.push(null);
-        console.warn('target[' + i + '] load fail:', e.message);
+        console.warn('target['+i+'] fail:', e.message);
       }
     }
-    _loadResult = { valid: indexed.filter(Boolean), indexed };
+    _loadResult = {valid: indexed.filter(Boolean), indexed};
   }
 
   async function requestSensorPermissions() {
@@ -606,44 +507,41 @@
     if (!_loadResult?.valid?.length || !_xrReady) {
       showSt('❌ AR 初始化失敗，請重新整理', 8000); return;
     }
-    const { valid, indexed } = _loadResult;
-    XR8.XrController.configure({ disableWorldTracking: true, imageTargetData: valid });
+    const {valid, indexed} = _loadResult;
+    XR8.XrController.configure({disableWorldTracking:true, imageTargetData:valid});
     XR8.addCameraPipelineModules([
       XR8.GlTextureRenderer.pipelineModule(),
       XR8.Threejs.pipelineModule(),
       XR8.XrController.pipelineModule(),
-      mkARModule(indexed),
+      mkARModule(indexed)
     ]);
-    XR8.run({ canvas: document.getElementById('renderCanvas') });
+    XR8.run({canvas: document.getElementById('renderCanvas')});
   }
 
   window.addEventListener('xrerror', e => {
     showSt('❌ AR 錯誤：' + JSON.stringify(e.detail), 10000);
-    console.error('xrerror', e.detail);
   });
 
   (() => {
     const overlay = document.createElement('div');
     Object.assign(overlay.style, {
-      position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-      zIndex: 9999, display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: '16px',
-      background: 'rgba(0,4,16,.95)', cursor: 'pointer',
+      position:'fixed', top:0, left:0, width:'100%', height:'100%',
+      zIndex:9999, display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center', gap:'16px',
+      background:'rgba(0,4,16,.95)', cursor:'pointer'
     });
     overlay.innerHTML = `
-      <div style="font-size:40px;animation:pulse 2s infinite">🦝</div>
-      <div style="font-family:monospace;font-size:13px;letter-spacing:3px;color:rgba(0,200,255,.8);text-align:center">
+      <div style="font-size:48px;animation:pulse 2s infinite">🦝</div>
+      <div style="font-family:monospace;font-size:14px;letter-spacing:3px;color:rgba(0,200,255,.85);text-align:center">
         AR BUSINESS CARD<br>
-        <span style="font-size:10px;opacity:.5;letter-spacing:1px">TAP TO START</span>
+        <span style="font-size:11px;opacity:.6">TAP TO START</span>
       </div>
-      <style>@keyframes pulse{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:.6;transform:scale(1.08)}}</style>
     `;
     overlay.addEventListener('click', async function tap() {
-      overlay.removeEventListener('click', tap);
       overlay.remove();
       await requestSensorPermissions();
       startXR8();
-    }, { once: true });
+    }, {once:true});
     document.body.appendChild(overlay);
     loadTargets();
   })();
