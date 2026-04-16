@@ -53,10 +53,6 @@
   .sbox{width:218px;height:218px;position:relative;border:1.5px solid rgba(0,210,255,.35);border-radius:12px}
   .sline{position:absolute;height:2px;width:100%;top:0;background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);animation:scan 2s ease-in-out infinite}
   .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.9);border-style:solid;border-width:0}
-  .c-tl{top:-2px;left:-2px;border-top-width:2.5px;border-left-width:2.5px;border-radius:4px 0 0 0}
-  .c-tr{top:-2px;right:-2px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 4px 0 0}
-  .c-bl{bottom:-2px;left:-2px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 4px}
-  .c-br{bottom:-2px;right:-2px;border-bottom-width:2.5px;border-right-width:2.5px;border-radius:0 0 4px 0}
   #scan-label{font-family:monospace;font-size:11px;letter-spacing:2px;color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
 
   #status{position:fixed;top:14px;left:50%;transform:translateX(-50%);padding:7px 18px;background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);border-radius:20px;backdrop-filter:blur(10px);font-family:monospace;font-size:11px;color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;white-space:nowrap}
@@ -109,71 +105,54 @@
   </div>
 
   <script>
-  // UI Helpers
   let _stT, _toastT;
-  function showSt(msg, dur=3000) {
-    const e=document.getElementById('status');
-    e.textContent=msg; e.classList.add('show');
-    clearTimeout(_stT); _stT=setTimeout(()=>e.classList.remove('show'),dur);
-  }
-  function showToast(msg) {
-    const e=document.getElementById('toast');
-    e.textContent=msg; e.classList.add('show');
-    clearTimeout(_toastT); _toastT=setTimeout(()=>e.classList.remove('show'),1800);
-  }
-  function doFlash() {
-    const f=document.getElementById('flash');
-    f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),700);
-  }
+  function showSt(msg, dur=3000) { const e=document.getElementById('status'); e.textContent=msg; e.classList.add('show'); clearTimeout(_stT); _stT=setTimeout(()=>e.classList.remove('show'),dur); }
+  function showToast(msg) { const e=document.getElementById('toast'); e.textContent=msg; e.classList.add('show'); clearTimeout(_toastT); _toastT=setTimeout(()=>e.classList.remove('show'),1800); }
+  function doFlash() { const f=document.getElementById('flash'); f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),700); }
 
   function createRoundedRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
-    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-    ctx.lineTo(x+w,y+h-r);
-    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-    ctx.lineTo(x+r,y+h);
-    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-    ctx.lineTo(x,y+r);
-    ctx.quadraticCurveTo(x,y,x+r,y);
-    ctx.closePath();
+    ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
   }
 
   function createContactButtonCanvas(contact) {
-    const w = 680, h = 145;
+    const w = 520, h = 110;   // 變小後的畫布
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
 
     const grad = ctx.createLinearGradient(0,0,0,h);
-    grad.addColorStop(0,'rgba(255,255,255,0.1)');
-    grad.addColorStop(1,'rgba(0,0,0,0.32)');
+    grad.addColorStop(0,'rgba(255,255,255,0.08)');
+    grad.addColorStop(1,'rgba(0,0,0,0.25)');
     ctx.fillStyle = grad;
-    createRoundedRect(ctx,0,0,w,h,28);
+    createRoundedRect(ctx,0,0,w,h,22);
     ctx.fill();
 
     ctx.fillStyle = contact.accent;
-    createRoundedRect(ctx,0,0,65,h,28);
+    createRoundedRect(ctx,0,0,48,h,22);
     ctx.fill();
 
-    ctx.font = 'bold 98px sans-serif';
+    ctx.font = 'bold 68px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.shadowColor = '#fff';
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = 12;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(contact.icon, 40, h/2 + 6);
+    ctx.fillText(contact.icon, 30, h/2 + 3);
 
     ctx.shadowBlur = 0;
-    ctx.font = '600 68px Arial, sans-serif';
+    ctx.font = '600 46px Arial, sans-serif';
     ctx.fillStyle = '#ddf4ff';
     ctx.textAlign = 'left';
-    ctx.fillText(contact.label, 135, h/2 + 4);
+    ctx.fillText(contact.label, 88, h/2 + 2);
 
-    ctx.font = 'bold 82px sans-serif';
-    ctx.fillStyle = 'rgba(0,190,255,0.95)';
+    ctx.font = 'bold 58px sans-serif';
+    ctx.fillStyle = 'rgba(0,180,255,0.9)';
     ctx.textAlign = 'right';
-    ctx.fillText('›', w-45, h/2 + 6);
+    ctx.fillText('›', w-32, h/2 + 3);
 
     return canvas;
   }
@@ -182,13 +161,13 @@
     const canvas = document.createElement('canvas');
     canvas.width = widthPx; canvas.height = heightPx;
     const ctx = canvas.getContext('2d');
-    ctx.shadowColor = 'rgba(0,220,255,0.95)';
-    ctx.shadowBlur = 22;
+    ctx.shadowColor = 'rgba(0,220,255,0.9)';
+    ctx.shadowBlur = 18;
     ctx.font = `700 ${fontSize}px Arial, sans-serif`;
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, widthPx/2, heightPx/2 + 6);
+    ctx.fillText(text, widthPx/2, heightPx/2 + 4);
     return canvas;
   }
 
@@ -225,7 +204,6 @@
       const SCALE = 1 / 780;
       const loader = new THREE.TextureLoader();
 
-      // 浣熊
       if (raccoonData?.model) {
         raccoonData.model.position.set(-0.72, 0.38, 0.06);
         raccoonData.model.scale.setScalar(0.138);
@@ -233,67 +211,50 @@
 
       // 大頭照
       const profileCanvas = document.createElement('canvas');
-      profileCanvas.width = 420; profileCanvas.height = 420;
+      profileCanvas.width = 380; profileCanvas.height = 380;
       const pctx = profileCanvas.getContext('2d');
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        pctx.save();
-        pctx.beginPath();
-        pctx.arc(210, 210, 178, 0, Math.PI*2);
-        pctx.clip();
-        pctx.drawImage(img, 0, 0, 420, 420);
-        pctx.restore();
-        pctx.shadowColor = '#00f0ff';
-        pctx.shadowBlur = 32;
-        pctx.lineWidth = 28;
-        pctx.strokeStyle = 'rgba(0,240,255,0.9)';
-        pctx.beginPath();
-        pctx.arc(210, 210, 195, 0, Math.PI*2);
-        pctx.stroke();
-
+        pctx.save(); pctx.beginPath(); pctx.arc(190,190,160,0,Math.PI*2); pctx.clip();
+        pctx.drawImage(img,0,0,380,380); pctx.restore();
+        pctx.shadowColor = '#00f0ff'; pctx.shadowBlur = 28; pctx.lineWidth = 24;
+        pctx.strokeStyle = 'rgba(0,240,255,0.85)';
+        pctx.beginPath(); pctx.arc(190,190,178,0,Math.PI*2); pctx.stroke();
         const tex = new THREE.CanvasTexture(profileCanvas);
-        const mesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.48, 0.48),
-          new THREE.MeshBasicMaterial({map: tex, transparent: true, side: THREE.DoubleSide})
-        );
-        mesh.position.set(0.75, 0.62, 0.16);
-        cardGroup.add(mesh);
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.42), new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));
+        mesh.position.set(0.78, 0.62, 0.15); cardGroup.add(mesh);
       };
       img.src = AR_CONFIG.profile.photo;
 
-      // 姓名 (字體放大2倍)
-      const nameCanvas = createTextCanvas(AR_CONFIG.profile.name, 128, 720, 160);
-      const nameMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.78 * SCALE * 720, 0.78 * SCALE * 160),
-        new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(nameCanvas), transparent: true, side: THREE.DoubleSide})
-      );
-      nameMesh.position.set(0.78, 0.38, 0.14);
-      cardGroup.add(nameMesh);
+      // 姓名
+      const nameCanvas = createTextCanvas(AR_CONFIG.profile.name, 118, 680, 145);
+      const nameMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.72*SCALE*680, 0.72*SCALE*145), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(nameCanvas),transparent:true,side:THREE.DoubleSide}));
+      nameMesh.position.set(0.78, 0.39, 0.14); cardGroup.add(nameMesh);
 
       // 職稱
-      const titleCanvas = createTextCanvas(AR_CONFIG.profile.title.toUpperCase(), 58, 580, 88, '#00e8ff');
-      const titleMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.68 * SCALE * 580, 0.68 * SCALE * 88),
-        new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(titleCanvas), transparent: true, side: THREE.DoubleSide})
-      );
-      titleMesh.position.set(0.78, 0.25, 0.135);
-      cardGroup.add(titleMesh);
+      const titleCanvas = createTextCanvas(AR_CONFIG.profile.title.toUpperCase(), 52, 520, 78, '#00e8ff');
+      const titleMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.62*SCALE*520, 0.62*SCALE*78), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(titleCanvas),transparent:true,side:THREE.DoubleSide}));
+      titleMesh.position.set(0.78, 0.27, 0.135); cardGroup.add(titleMesh);
 
-      // 聯絡按鈕 (放大 2.5 倍)
+      // === 聯絡按鈕 - 已改小 + 右移 + 緊湊 ===
       AR_CONFIG.contacts.forEach((contact, i) => {
         const btnCanvas = createContactButtonCanvas(contact);
         const mesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.95, 0.37),
+          new THREE.PlaneGeometry(1.45, 0.28),           // 變小
           new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(btnCanvas), transparent: true, side: THREE.DoubleSide})
         );
-        mesh.position.set(0.78, 0.04 - i * 0.42, 0.12);
+        mesh.position.set(
+          0.92,                                          // 往右移動
+          0.08 - i * 0.32,                               // 緊湊間距
+          0.115
+        );
         mesh.userData = { type: 'contact', url: contact.url };
         interactiveObjects.push(mesh);
         cardGroup.add(mesh);
       });
 
-      // 社群 ICON (放大 2.5 倍)
+      // 社群 ICON（保持較大）
       const socialStartX = -0.78;
       AR_CONFIG.socials.forEach((soc, i) => {
         loader.load(soc.img, (tex) => {
@@ -317,7 +278,6 @@
         const rect = rendererRef.domElement.getBoundingClientRect();
         const x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
         const y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-
         raycaster.setFromCamera(new THREE.Vector2(x, y), cameraRef);
         const intersects = raycaster.intersectObjects(interactiveObjects, false);
         if (intersects.length > 0) {
@@ -325,7 +285,7 @@
           if (obj.userData.url) {
             doFlash();
             window.open(obj.userData.url, '_blank', 'noopener');
-            showToast(obj.userData.type === 'social' ? '開啟社群' : '開啟聯絡');
+            showToast('已開啟連結');
           }
         }
       }, { passive: false });
@@ -333,25 +293,19 @@
 
     function setupBtns() {
       document.getElementById('bb-play').addEventListener('click', () => {
-        if (!videoEl || S.active !== 'video') { showToast('請先掃描名片背面'); return; }
+        if (!videoEl || S.active !== 'video') return showToast('請先掃描背面');
         if (videoPlaying) {
           videoEl.pause(); videoPlaying = false;
           vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
           document.getElementById('bb-play').textContent = '▶ 播放';
         } else {
           if (!videoHasInteracted) { videoEl.muted = false; videoHasInteracted = true; }
-          videoEl.play().then(() => {
-            videoPlaying = true;
-            vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片';
-            document.getElementById('bb-play').textContent = '⏸ 暫停';
-          }).catch(() => {});
+          videoEl.play().then(() => { videoPlaying = true; vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片'; document.getElementById('bb-play').textContent = '⏸ 暫停'; });
         }
       });
       document.getElementById('bb-mute').addEventListener('click', () => {
-        if (videoEl) {
-          videoEl.muted = !videoEl.muted;
-          document.getElementById('bb-mute').textContent = videoEl.muted ? '🔇 靜音' : '🔊 聲音';
-        }
+        if (videoEl) videoEl.muted = !videoEl.muted;
+        document.getElementById('bb-mute').textContent = videoEl.muted ? '🔇 靜音' : '🔊 聲音';
       });
       document.getElementById('bb-holo').addEventListener('click', () => {
         holoVisible = !holoVisible;
@@ -359,7 +313,6 @@
         document.getElementById('bb-holo').classList.toggle('active', holoVisible);
         showToast(holoVisible ? '🔷 全息 ON' : '🔲 全息 OFF');
       });
-      document.getElementById('vp-play-btn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('bb-play').click(); });
     }
 
     return {
@@ -367,18 +320,14 @@
       onStart() {
         const { scene, renderer, camera } = XR8.Threejs.xrScene();
         rendererRef = renderer; cameraRef = camera;
-
         renderer.autoClear = false;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight, false);
 
         scene.add(new THREE.AmbientLight(0xffffff, 1.3));
-        const dir = new THREE.DirectionalLight(0xffffff, 0.95);
-        dir.position.set(0.8, 2.8, 2.2); scene.add(dir);
+        const dir = new THREE.DirectionalLight(0xffffff, 0.95); dir.position.set(0.8, 2.8, 2.2); scene.add(dir);
 
-        cardGroup = new THREE.Group();
-        cardGroup.visible = false;
-        scene.add(cardGroup);
+        cardGroup = new THREE.Group(); cardGroup.visible = false; scene.add(cardGroup);
 
         const ldr = new THREE.GLTFLoader();
         ldr.load(AR_CONFIG.raccoonSrc, gltf => {
@@ -393,21 +342,16 @@
           setupRaycaster();
         });
 
-        // 背面影片
         videoGroup = new THREE.Group(); videoGroup.visible = false; scene.add(videoGroup);
         videoEl = document.createElement('video');
-        videoEl.src = AR_CONFIG.videoSrc; videoEl.loop = true; videoEl.muted = true;
-        videoEl.playsInline = true; videoEl.crossOrigin = 'anonymous';
+        videoEl.src = AR_CONFIG.videoSrc; videoEl.loop = true; videoEl.muted = true; videoEl.playsInline = true;
         videoTex = new THREE.VideoTexture(videoEl);
-        videoMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.5, 0.84375),
-          new THREE.MeshBasicMaterial({map: videoTex, side: THREE.DoubleSide, toneMapped: false})
-        );
+        videoMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.84375), new THREE.MeshBasicMaterial({map: videoTex, side: THREE.DoubleSide}));
         videoGroup.add(videoMesh);
 
         setupBtns();
         clock.start();
-        setTimeout(() => showSt('請對準名片正面（3D 內容已放大）', 6000), 800);
+        setTimeout(() => showSt('請對準名片正面', 5000), 600);
       },
       onUpdate() {
         const delta = clock.getDelta();
@@ -437,10 +381,6 @@
             vpPanel.classList.add('show');
             S.active = 'video';
             doFlash();
-            if (!videoHasInteracted && videoEl) {
-              videoEl.currentTime = 0;
-              videoEl.play().then(() => { videoPlaying = true; vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片'; });
-            }
           }
         }},
         {event:'reality.imageupdated', process:({detail}) => {
@@ -456,22 +396,12 @@
             videoGroup.scale.setScalar(detail.scale);
           }
         }},
-        {event:'reality.imagelost', process:({detail}) => {
-          const role = nameToRole.get(detail?.name || '');
-          if (role && role === S.active) clearAll();
-          scanEl.classList.remove('hidden');
-        }}
-      ],
-      onAttach() {
-        window.addEventListener('resize', () => {
-          const {renderer} = XR8.Threejs.xrScene();
-          renderer.setSize(window.innerWidth, window.innerHeight, false);
-        });
-      }
+        {event:'reality.imagelost', process:() => { clearAll(); scanEl.classList.remove('hidden'); }}
+      ]
     };
   }
 
-  // MAIN
+  // MAIN 啟動程式碼
   let _xrReady = false, _loadResult = null;
   window.addEventListener('xrloaded', () => { _xrReady = true; });
 
@@ -480,12 +410,9 @@
     for (const [i, path] of AR_CONFIG.targetJsonPaths.entries()) {
       try {
         const r = await fetch(path);
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        indexed.push(JSON.parse(await r.text()));
-      } catch(e) {
-        indexed.push(null);
-        console.warn('target['+i+'] fail:', e.message);
-      }
+        if (r.ok) indexed.push(JSON.parse(await r.text()));
+        else indexed.push(null);
+      } catch(e) { indexed.push(null); }
     }
     _loadResult = {valid: indexed.filter(Boolean), indexed};
   }
@@ -504,44 +431,18 @@
     while ((!_loadResult || !_xrReady) && w < 12000) {
       await new Promise(r => setTimeout(r, 200)); w += 200;
     }
-    if (!_loadResult?.valid?.length || !_xrReady) {
-      showSt('❌ AR 初始化失敗，請重新整理', 8000); return;
-    }
+    if (!_loadResult?.valid?.length || !_xrReady) return showSt('❌ AR 初始化失敗，請重新整理', 8000);
     const {valid, indexed} = _loadResult;
     XR8.XrController.configure({disableWorldTracking:true, imageTargetData:valid});
-    XR8.addCameraPipelineModules([
-      XR8.GlTextureRenderer.pipelineModule(),
-      XR8.Threejs.pipelineModule(),
-      XR8.XrController.pipelineModule(),
-      mkARModule(indexed)
-    ]);
+    XR8.addCameraPipelineModules([XR8.GlTextureRenderer.pipelineModule(), XR8.Threejs.pipelineModule(), XR8.XrController.pipelineModule(), mkARModule(indexed)]);
     XR8.run({canvas: document.getElementById('renderCanvas')});
   }
 
-  window.addEventListener('xrerror', e => {
-    showSt('❌ AR 錯誤：' + JSON.stringify(e.detail), 10000);
-  });
-
   (() => {
     const overlay = document.createElement('div');
-    Object.assign(overlay.style, {
-      position:'fixed', top:0, left:0, width:'100%', height:'100%',
-      zIndex:9999, display:'flex', flexDirection:'column',
-      alignItems:'center', justifyContent:'center', gap:'16px',
-      background:'rgba(0,4,16,.95)', cursor:'pointer'
-    });
-    overlay.innerHTML = `
-      <div style="font-size:48px;animation:pulse 2s infinite">🦝</div>
-      <div style="font-family:monospace;font-size:14px;letter-spacing:3px;color:rgba(0,200,255,.85);text-align:center">
-        AR BUSINESS CARD<br>
-        <span style="font-size:11px;opacity:.6">TAP TO START</span>
-      </div>
-    `;
-    overlay.addEventListener('click', async function tap() {
-      overlay.remove();
-      await requestSensorPermissions();
-      startXR8();
-    }, {once:true});
+    Object.assign(overlay.style,{position:'fixed',top:0,left:0,width:'100%',height:'100%',zIndex:9999,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'16px',background:'rgba(0,4,16,.95)',cursor:'pointer'});
+    overlay.innerHTML = `<div style="font-size:48px;animation:pulse 2s infinite">🦝</div><div style="font-family:monospace;font-size:14px;letter-spacing:3px;color:rgba(0,200,255,.85);text-align:center">AR BUSINESS CARD<br><span style="font-size:11px;opacity:.6">TAP TO START</span></div>`;
+    overlay.addEventListener('click', async function tap() { overlay.remove(); await requestSensorPermissions(); startXR8(); }, {once:true});
     document.body.appendChild(overlay);
     loadTargets();
   })();
