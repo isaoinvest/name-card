@@ -42,8 +42,10 @@
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-user-select:none;user-select:none}
   #renderCanvas{position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:0;display:block}
+
+  /* FIX: visibility:hidden 而非 display:none，避免 iOS Safari 停止 video decode */
   [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{visibility:hidden!important;pointer-events:none!important}
-  [class*="watermark"],[id*="watermark"]{display:none!important}
+  [class*="watermark"],[id*="watermark"]{visibility:hidden!important;pointer-events:none!important}
 
   @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.2}}
   @keyframes scan{0%{transform:translateY(0)}50%{transform:translateY(216px)}100%{transform:translateY(0)}}
@@ -53,6 +55,10 @@
   .sbox{width:218px;height:218px;position:relative;border:1.5px solid rgba(0,210,255,.35);border-radius:12px}
   .sline{position:absolute;height:2px;width:100%;top:0;background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);animation:scan 2s ease-in-out infinite}
   .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.9);border-style:solid;border-width:0}
+  .c-tl{top:0;left:0;border-top-width:2px;border-left-width:2px}
+  .c-tr{top:0;right:0;border-top-width:2px;border-right-width:2px}
+  .c-bl{bottom:0;left:0;border-bottom-width:2px;border-left-width:2px}
+  .c-br{bottom:0;right:0;border-bottom-width:2px;border-right-width:2px}
   #scan-label{font-family:monospace;font-size:11px;letter-spacing:2px;color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
 
   #status{position:fixed;top:14px;left:50%;transform:translateX(-50%);padding:7px 18px;background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);border-radius:20px;backdrop-filter:blur(10px);font-family:monospace;font-size:11px;color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;white-space:nowrap}
@@ -64,10 +70,40 @@
   #toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:9px 22px;background:rgba(0,30,90,.94);border:1px solid rgba(0,200,255,.5);border-radius:28px;font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);z-index:200;opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap}
   #toast.show{opacity:1}
 
-  #video-panel{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);z-index:60;opacity:0;transition:opacity .4s,transform .4s;pointer-events:none;white-space:nowrap}
+  /* FIX: video-panel 上移避免被 btn-bar 遮住 */
+  #video-panel{position:fixed;bottom:130px;left:50%;transform:translateX(-50%) translateY(20px);z-index:60;opacity:0;transition:opacity .4s,transform .4s;pointer-events:none;white-space:nowrap}
   #video-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
   .vp-pill{display:flex;align-items:center;gap:10px;padding:11px 22px;background:rgba(0,6,22,.92);border:1px solid rgba(0,175,255,.35);border-radius:50px;backdrop-filter:blur(14px);font-family:monospace;font-size:11px;letter-spacing:1.5px;color:rgba(0,200,255,.88);cursor:pointer}
   .vp-pill:active{background:rgba(0,50,130,.6)}
+
+  /* FIX: 補齊 btn-bar 樣式，原本完全缺失 */
+  .btn-bar{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    z-index:80;
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    padding:14px 16px 20px;
+    background:linear-gradient(to top, rgba(0,4,16,.92) 60%, transparent);
+    backdrop-filter:blur(8px);
+  }
+  .bb{
+    flex:1;
+    max-width:120px;
+    padding:10px 0;
+    background:rgba(0,20,60,.85);
+    border:1px solid rgba(0,175,255,.35);
+    border-radius:24px;
+    font-family:monospace;
+    font-size:11px;
+    letter-spacing:1px;
+    color:rgba(0,200,255,.9);
+    cursor:pointer;
+    transition:background .18s, border-color .18s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .bb:active{background:rgba(0,60,140,.7);border-color:rgba(0,210,255,.7)}
   </style>
 </head>
 <body>
@@ -96,7 +132,7 @@
 
   <div class="btn-bar">
     <button class="bb" id="bb-play">▶ 播放</button>
-    <button class="bb" id="bb-mute">🔇 靜音</button>
+    <button class="bb" id="bb-mute">🔊 聲音</button>
     <button class="bb" id="bb-holo">🔷 全息</button>
   </div>
 
@@ -167,14 +203,15 @@
   }
 
   function mkARModule(indexedData) {
+    // FIX: 用 .name 欄位建立 nameToRole，與原版一致
     const nameToRole = new Map();
     const ROLES = ['card','video'];
-    indexedData.forEach((d,i)=>{ if(d) nameToRole.set(d.name, ROLES[i]); });
+    indexedData.forEach((d,i)=>{ if(d && d.name) nameToRole.set(d.name, ROLES[i]); });
 
     let cardGroup, raccoonData = null;
     let videoGroup, videoMesh, videoEl, videoTex;
     let videoPlaying = false, videoHasInteracted = false;
-    let holoVisible = true;
+    let holoVisible = true, videoMuted = true;
     let raycaster, interactiveObjects = [];
     let cameraRef, rendererRef;
 
@@ -189,8 +226,10 @@
       if (cardGroup) cardGroup.visible = false;
       if (videoGroup) videoGroup.visible = false;
       vpPanel.classList.remove('show');
-      if (videoEl) videoEl.pause();
+      if (videoEl) { videoEl.pause(); videoEl.currentTime = 0; }
       videoPlaying = false;
+      // FIX: clearAll 時重設 videoHasInteracted，避免下次找到時無法重新互動
+      videoHasInteracted = false;
       vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
       document.getElementById('bb-play').textContent = '▶ 播放';
       S.active = null;
@@ -205,7 +244,7 @@
         raccoonData.model.scale.setScalar(0.138);
       }
 
-      // 大頭照（上移，與浣熊大致切平）
+      // 大頭照
       const profileCanvas = document.createElement('canvas');
       profileCanvas.width = 380; profileCanvas.height = 380;
       const pctx = profileCanvas.getContext('2d');
@@ -219,7 +258,7 @@
         pctx.beginPath(); pctx.arc(190,190,178,0,Math.PI*2); pctx.stroke();
         const tex = new THREE.CanvasTexture(profileCanvas);
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.42), new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));
-        mesh.position.set(0.78, 0.85, 0.16);   // 更往上
+        mesh.position.set(0.78, 0.85, 0.16);
         cardGroup.add(mesh);
       };
       img.src = AR_CONFIG.profile.photo;
@@ -234,14 +273,14 @@
       const titleMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.62*SCALE*520, 0.62*SCALE*78), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(titleCanvas),transparent:true,side:THREE.DoubleSide}));
       titleMesh.position.set(0.78, 0.50, 0.135); cardGroup.add(titleMesh);
 
-      // 聯絡按鈕（整體大幅上移）
+      // 聯絡按鈕
       AR_CONFIG.contacts.forEach((contact, i) => {
         const btnCanvas = createContactButtonCanvas(contact);
         const mesh = new THREE.Mesh(
           new THREE.PlaneGeometry(1.45, 0.28),
           new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(btnCanvas), transparent: true, side: THREE.DoubleSide})
         );
-        mesh.position.set(0.92, 0.31 - i * 0.32, 0.115);   // 再次上移
+        mesh.position.set(0.92, 0.31 - i * 0.32, 0.115);
         mesh.userData = { type: 'contact', url: contact.url };
         interactiveObjects.push(mesh);
         cardGroup.add(mesh);
@@ -281,20 +320,65 @@
       }, { passive: false });
     }
 
-    function setupBtns() { /* ... 與之前相同 ... */ 
-      // (省略以節省空間，實際程式碼與上版完全相同)
-      document.getElementById('bb-play').addEventListener('click', () => {
-        if (!videoEl || S.active !== 'video') return showToast('請先掃描背面');
-        if (videoPlaying) {
-          videoEl.pause(); videoPlaying = false;
-          vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
-          document.getElementById('bb-play').textContent = '▶ 播放';
-        } else {
-          if (!videoHasInteracted) { videoEl.muted = false; videoHasInteracted = true; }
-          videoEl.play().then(() => { videoPlaying = true; vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片'; document.getElementById('bb-play').textContent = '⏸ 暫停'; });
+    function syncVideoBtn() {
+      if (videoPlaying) {
+        vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片';
+        document.getElementById('bb-play').textContent = '⏸ 暫停';
+      } else {
+        vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
+        document.getElementById('bb-play').textContent = '▶ 播放';
+      }
+    }
+
+    function toggleVideo() {
+      if (!videoEl || S.active !== 'video') { showToast('請先掃描背面'); return; }
+      if (videoPlaying) {
+        videoEl.pause();
+        videoPlaying = false;
+      } else {
+        // 第一次用戶互動才取消靜音
+        if (!videoHasInteracted) {
+          videoEl.muted = false;
+          videoMuted = false;
+          videoHasInteracted = true;
+          document.getElementById('bb-mute').textContent = '🔊 聲音';
         }
+        videoEl.play().then(() => { videoPlaying = true; syncVideoBtn(); }).catch(err => {
+          console.warn('video play failed:', err);
+          showToast('影片播放失敗，請再試一次');
+        });
+        return; // syncVideoBtn 在 then 裡處理
+      }
+      syncVideoBtn();
+    }
+
+    function setupBtns() {
+      // FIX: vp-play-btn 綁定 click（原始代碼完全遺漏）
+      document.getElementById('vp-play-btn').addEventListener('click', toggleVideo);
+
+      // bb-play
+      document.getElementById('bb-play').addEventListener('click', toggleVideo);
+
+      // FIX: bb-mute 實作完整（原始代碼只有 comment）
+      document.getElementById('bb-mute').addEventListener('click', () => {
+        if (!videoEl) return;
+        videoMuted = !videoMuted;
+        videoEl.muted = videoMuted;
+        document.getElementById('bb-mute').textContent = videoMuted ? '🔇 靜音' : '🔊 聲音';
+        showToast(videoMuted ? '已靜音' : '已開聲');
       });
-      // mute 和 holo 按鈕保持不變...
+
+      // FIX: bb-holo 實作完整（原始代碼只有 comment）
+      document.getElementById('bb-holo').addEventListener('click', () => {
+        if (S.active !== 'card' || !cardGroup) { showToast('請先掃描正面'); return; }
+        holoVisible = !holoVisible;
+        // 只切換 UI 元素可見度，保留 raccoon 模型
+        cardGroup.children.forEach(child => {
+          if (child !== raccoonData?.model) child.visible = holoVisible;
+        });
+        document.getElementById('bb-holo').textContent = holoVisible ? '🔷 全息' : '🔳 全息';
+        showToast(holoVisible ? '全息顯示：開' : '全息顯示：關');
+      });
     }
 
     return {
@@ -302,6 +386,7 @@
       onStart() {
         const { scene, renderer, camera } = XR8.Threejs.xrScene();
         rendererRef = renderer; cameraRef = camera;
+        // FIX: autoClear=false 防止 Three.js 清掉相機畫面（必要）
         renderer.autoClear = false;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -322,21 +407,37 @@
           raccoonData = {model, mixer};
           create3DNameCardUI();
           setupRaycaster();
+        }, undefined, (err) => {
+          console.warn('GLTF load error:', err);
+          // 即使 raccoon 載入失敗，還是建立 UI
+          raccoonData = null;
+          create3DNameCardUI();
+          setupRaycaster();
         });
 
-        // 背面影片 - 修復黑屏
+        // 背面影片 group
         videoGroup = new THREE.Group(); videoGroup.visible = false; scene.add(videoGroup);
+
+        // FIX: video 元素建立 — 完整設定以避免 iOS 黑屏
         videoEl = document.createElement('video');
         videoEl.src = AR_CONFIG.videoSrc;
         videoEl.loop = true;
-        videoEl.muted = true;
+        videoEl.muted = true;          // 初始靜音，避免 autoplay policy 阻擋
         videoEl.playsInline = true;
+        videoEl.setAttribute('playsinline', '');
+        videoEl.setAttribute('webkit-playsinline', '');
         videoEl.crossOrigin = 'anonymous';
-        videoEl.setAttribute('webkit-playsinline', 'true');
-        videoEl.load();   // 強制載入
+        // FIX: 使用 visibility:hidden 附加到 DOM，讓 iOS Safari 持續 decode
+        videoEl.style.cssText = 'position:absolute;width:1px;height:1px;top:-9999px;visibility:hidden';
+        document.body.appendChild(videoEl);
+        videoEl.load();
 
+        // FIX: VideoTexture 設定
         videoTex = new THREE.VideoTexture(videoEl);
-        videoTex.minFilter = videoTex.magFilter = THREE.LinearFilter;
+        videoTex.minFilter = THREE.LinearFilter;
+        videoTex.magFilter = THREE.LinearFilter;
+        videoTex.format = THREE.RGBAFormat;
+
         videoMesh = new THREE.Mesh(
           new THREE.PlaneGeometry(1.5, 0.84375),
           new THREE.MeshBasicMaterial({map: videoTex, side: THREE.DoubleSide, toneMapped: false})
@@ -347,19 +448,24 @@
         clock.start();
         setTimeout(() => showSt('請對準名片正面或背面', 5000), 600);
       },
+
       onUpdate() {
         const delta = clock.getDelta();
         if (raccoonData?.mixer) raccoonData.mixer.update(delta);
         if (raccoonData?.model && cardGroup.visible) {
           raccoonData.model.position.y = 0.38 + Math.sin(clock.elapsedTime * 1.35) * 0.032;
         }
-        if (videoTex) videoTex.needsUpdate = true;   // 確保影片更新
+        // FIX: 只在影片正在播放時才更新 texture，減少不必要的 GPU 操作
+        if (videoTex && videoEl && !videoEl.paused && videoEl.readyState >= 2) {
+          videoTex.needsUpdate = true;
+        }
       },
+
       listeners: [
         {event:'reality.imagefound', process:({detail}) => {
           const role = nameToRole.get(detail.name);
           if (!role) return;
-          scanEl.classList.add('hidden');   // 立即隱藏掃描框
+          scanEl.classList.add('hidden');
           clearAll();
           if (role === 'card') {
             cardGroup.position.set(detail.position.x, detail.position.y, detail.position.z);
@@ -377,9 +483,19 @@
             vpPanel.classList.add('show');
             S.active = 'video';
             doFlash();
-            if (!videoHasInteracted && videoEl) {
+            // FIX: 掃到背面自動靜音預播，等用戶點擊才開聲
+            if (videoEl) {
+              videoEl.muted = true;
+              videoMuted = true;
+              document.getElementById('bb-mute').textContent = '🔇 靜音';
               videoEl.currentTime = 0;
-              videoEl.play().catch(()=>{});
+              videoEl.play().then(() => {
+                videoPlaying = true;
+                syncVideoBtn();
+                showSt('📺 影片播放中（點擊開聲）', 3000);
+              }).catch(() => {
+                showSt('▶ 點擊播放影片', 4000);
+              });
             }
           }
         }},
@@ -404,17 +520,24 @@
     };
   }
 
-  // MAIN（與之前相同）
+  // MAIN
   let _xrReady = false, _loadResult = null;
   window.addEventListener('xrloaded', () => { _xrReady = true; });
 
   async function loadTargets() {
+    // FIX: fetch 失敗時 push null 佔位，保持 index 對應 ROLES 陣列正確
     const indexed = [];
-    for (const [i, path] of AR_CONFIG.targetJsonPaths.entries()) {
+    for (const path of AR_CONFIG.targetJsonPaths) {
       try {
         const r = await fetch(path);
-        if (r.ok) indexed.push(JSON.parse(await r.text()));
-      } catch(e) {}
+        if (r.ok) {
+          indexed.push(JSON.parse(await r.text()));
+        } else {
+          indexed.push(null);
+        }
+      } catch(e) {
+        indexed.push(null);
+      }
     }
     _loadResult = {valid: indexed.filter(Boolean), indexed};
   }
@@ -441,8 +564,8 @@
   (() => {
     const overlay = document.createElement('div');
     Object.assign(overlay.style,{
-      position:'fixed',top:0,left:0,width:'100%',height:'100%',
-      zIndex:9999, display:'flex', flexDirection:'column',
+      position:'fixed',top:'0',left:'0',width:'100%',height:'100%',
+      zIndex:'9999', display:'flex', flexDirection:'column',
       alignItems:'center', justifyContent:'center', gap:'16px',
       background:'rgba(0,4,16,.95)', cursor:'pointer'
     });
