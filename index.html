@@ -1,785 +1,796 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<title>AR Business Card</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<!-- 按照官方文檔的正確載入順序 -->
-<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/aframe-extras.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/mindar-image-aframe.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/isaoinvest/ar-libs/gsap.min.js"></script>
-<script>
-  const AR_CONFIG = {
-    // ── 圖像目標 JSON（順序決定角色）
-    targetJsonPaths: [
-      './image-targets/isaofront.json',   // [0] → 名片正面（浣熊+立體資訊）
-      './image-targets/isaoback.json',    // [1] → 名片背面（影片）
-    ],
+    <meta charset="UTF-8">
+    <title>AR Business Card</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
 
-    // ── 影片路徑
-    videoSrc: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
+    <!-- AR_CONFIG -->
+    <script>
+        const AR_CONFIG = {
+            // 圖像目標 JSON（順序決定角色）
+            targetJsonPaths: [
+                './image-targets/isaofront.json',   // [0] 正面 → 浣熊 + 立體資訊
+                './image-targets/isaoback.json'     // [1] 背面 → 影片
+            ],
 
-    // ── 3D 浣熊 GLTF模型路徑 (保持原樣，這是一個帶鼓組的立體模型)
-    raccoonSrc: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf',
+            // 影片路徑
+            videoSrc: 'https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4',
 
-    // ── 個人資料
-    profile: {
-      photo:  'https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png',
-      name:   'MingHsun Li',
-      title:  'Red Panda Keeper',
-    },
+            // 3D 浣熊模型
+            raccoonSrc: 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf',
 
-    // ── 聯絡按鈕（立體浮動）
-    contacts: [
-      { label:'Website',   icon:'🌐', accent:'#00aaff', url:'https://isaoinvest.com' },
-      { label:'Email',     icon:'✉',  accent:'#00cc88', url:'mailto:isaoinvest@gmail.com' },
-      { label:'Phone',     icon:'☎',  accent:'#ff8800', url:'tel:+886920820259' },
-    ],
+            // 個人資料
+            profile: {
+                photo: 'https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png',
+                name:  'MingHsun Li',
+                title: 'Red Panda Keeper',
+            },
 
-    // ── 社群圖示（立體浮動於底部）
-    socials: [
-      { label:'LINE',      img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png',        url:'https://line.me/R/ti/p/@722fdkca' },
-      { label:'YouTube',   img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png',     url:'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ' },
-      { label:'Instagram', img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png',   url:'https://www.instagram.com/isaoinvest' },
-      { label:'Facebook',  img:'https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png',    url:'https://www.facebook.com/profile.php?id=61552552833098' },
-    ],
-  };
-  </script>
+            // 聯絡按鈕
+            contacts: [
+                { label: 'Website', icon: '🌐', accent: '#00aaff', url: 'https://isaoinvest.com' },
+                { label: 'Email',   icon: '✉',  accent: '#00cc88', url: 'mailto:isaoinvest@gmail.com' },
+                { label: 'Phone',   icon: '☎',  accent: '#ff8800', url: 'tel:+886920820259' },
+            ],
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="./external/xr/xr.js" data-preload-chunks="slam"></script>
+            // 社群圖示
+            socials: [
+                { label: 'LINE',      img: 'https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png',        url: 'https://line.me/R/ti/p/@722fdkca' },
+                { label: 'YouTube',   img: 'https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png',     url: 'https://www.youtube.com/channel/UC7hJoQaFXoqB-tW4zACOtvQ' },
+                { label: 'Instagram', img: 'https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png',   url: 'https://www.instagram.com/isaoinvest' },
+                { label: 'Facebook',  img: 'https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png',    url: 'https://www.facebook.com/profile.php?id=61552552833098' },
+            ],
+        };
+    </script>
 
-  <style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;
-    -webkit-user-select:none;user-select:none}
-  #renderCanvas{position:fixed!important;top:0!important;left:0!important;
-    width:100vw!important;height:100vh!important;z-index:0;display:block}
-  [class*="xr8"],[id*="xr8"],[class*="poweredby"],[id*="powered"]{
-    visibility:hidden!important;pointer-events:none!important}
-  [class*="watermark"],[id*="watermark"]{display:none!important}
-  @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.2}}
-  @keyframes scan{0%{transform:translateY(0)}50%{transform:translateY(218px)}100%{transform:translateY(0)}}
-  #scan-ov{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:28px;pointer-events:none;opacity:1;transition:opacity .5s}
-  #scan-ov.hidden{opacity:0}
-  .sbox{width:218px;height:218px;position:relative;
-    border:1.5px solid rgba(0,210,255,.32);border-radius:12px;
-    box-shadow:0 0 26px rgba(0,210,255,.1)}
-  .sline{position:absolute;height:2px;width:100%;top:0;
-    background:linear-gradient(90deg,transparent,#00eeff 30%,#00eeff 70%,transparent);
-    animation:scan 2s ease-in-out infinite;box-shadow:0 0 10px rgba(0,238,255,.7)}
-  .corn{position:absolute;width:20px;height:20px;border-color:rgba(0,238,255,.88);
-    border-style:solid;border-width:0}
-  .c-tl{top:-2px;left:-2px;border-top-width:2.5px;border-left-width:2.5px;border-radius:4px 0 0 0}
-  .c-tr{top:-2px;right:-2px;border-top-width:2.5px;border-right-width:2.5px;border-radius:0 4px 0 0}
-  .c-bl{bottom:-2px;left:-2px;border-bottom-width:2.5px;border-left-width:2.5px;border-radius:0 0 0 4px}
-  .c-br{bottom:-2px;right:-2px;border-bottom-width:2.5px;border-right-width:2.5px;border-radius:0 0 4px 0}
-  #scan-label{font-family:monospace;font-size:11px;letter-spacing:2.5px;
-    color:rgba(0,210,255,.7);text-align:center;line-height:2;animation:pulse 2s infinite}
-  #status{position:fixed;top:16px;left:50%;transform:translateX(-50%);padding:7px 18px;
-    background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.4);border-radius:20px;
-    backdrop-filter:blur(10px);font-family:monospace;font-size:11px;
-    color:rgba(0,205,255,.95);z-index:100;opacity:0;transition:opacity .3s;
-    white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis}
-  #status.show{opacity:1}
-  #toast{position:fixed;bottom:45%;left:50%;transform:translateX(-50%);
-    padding:9px 20px;background:rgba(0,30,90,.92);
-    border:1px solid rgba(0,200,255,.5);border-radius:28px;
-    font-family:monospace;font-size:12px;color:rgba(0,220,255,.95);
-    z-index:200;opacity:0;transition:opacity .18s;pointer-events:none;white-space:nowrap}
-  #toast.show{opacity:1}
-  #video-panel{position:fixed;bottom:18px;left:50%;
-    transform:translateX(-50%) translateY(20px);
-    z-index:60;opacity:0;transition:opacity .4s,transform .4s;
-    pointer-events:none;white-space:nowrap}
-  #video-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
-  .vp-pill{display:flex;align-items:center;gap:10px;padding:11px 24px;
-    background:rgba(0,6,22,.9);border:1px solid rgba(0,175,255,.35);border-radius:50px;
-    backdrop-filter:blur(14px);font-family:monospace;font-size:11px;
-    letter-spacing:1.5px;color:rgba(0,200,255,.88);cursor:pointer;
-    -webkit-tap-highlight-color:transparent}
-  .vp-pill:active{background:rgba(0,50,130,.6)}
-  #vp-icon{font-size:18px}
-  #perm-gate{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;
-    background:linear-gradient(180deg,#000,#020a1c);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:22px;transition:opacity .7s}
-  #perm-gate.fade{opacity:0;pointer-events:none}
-  .pg-logo{font-family:monospace;font-size:10px;letter-spacing:3.5px;
-    color:rgba(0,175,255,.42);text-align:center}
-  .pg-title{font-size:22px;font-weight:700;color:#fff;text-align:center;
-    text-shadow:0 0 26px rgba(0,175,255,.4)}
-  .pg-sub{font-size:12px;color:rgba(200,230,255,.48);text-align:center;
-    line-height:1.9;max-width:248px}
-  #btn-start{padding:14px 44px;background:transparent;
-    border:1.5px solid rgba(0,200,255,.62);border-radius:50px;
-    color:rgba(0,218,255,.95);font-size:15px;font-family:monospace;
-    letter-spacing:2.5px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  #btn-start:disabled{opacity:.4;cursor:wait}
-  </style>
+    <!-- Three.js + GLTF Loader + XR8 SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="./external/xr/xr.js" data-preload-chunks="slam"></script>
+
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #renderCanvas {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 0;
+            display: block;
+        }
+        /* 隱藏 XR8 官方浮水印 */
+        [class*="xr8"], [id*="xr8"], [class*="poweredby"], [id*="powered"],
+        [class*="watermark"], [id*="watermark"] {
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        @keyframes pulse { 0%,100% { opacity: .9 } 50% { opacity: .2 } }
+        @keyframes scan { 0% { transform: translateY(0) } 50% { transform: translateY(218px) } 100% { transform: translateY(0) } }
+
+        #scan-ov {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 28px;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity .5s;
+        }
+        #scan-ov.hidden { opacity: 0; }
+
+        .sbox {
+            width: 218px; height: 218px;
+            position: relative;
+            border: 1.5px solid rgba(0,210,255,.32);
+            border-radius: 12px;
+            box-shadow: 0 0 26px rgba(0,210,255,.1);
+        }
+        .sline {
+            position: absolute;
+            height: 2px; width: 100%; top: 0;
+            background: linear-gradient(90deg, transparent, #00eeff 30%, #00eeff 70%, transparent);
+            animation: scan 2s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(0,238,255,.7);
+        }
+        .corn {
+            position: absolute;
+            width: 20px; height: 20px;
+            border-color: rgba(0,238,255,.88);
+            border-style: solid;
+            border-width: 0;
+        }
+        .c-tl { top:-2px; left:-2px; border-top-width:2.5px; border-left-width:2.5px; border-radius:4px 0 0 0; }
+        .c-tr { top:-2px; right:-2px; border-top-width:2.5px; border-right-width:2.5px; border-radius:0 4px 0 0; }
+        .c-bl { bottom:-2px; left:-2px; border-bottom-width:2.5px; border-left-width:2.5px; border-radius:0 0 0 4px; }
+        .c-br { bottom:-2px; right:-2px; border-bottom-width:2.5px; border-right-width:2.5px; border-radius:0 0 4px 0; }
+
+        #scan-label {
+            font-family: monospace;
+            font-size: 11px;
+            letter-spacing: 2.5px;
+            color: rgba(0,210,255,.7);
+            text-align: center;
+            line-height: 2;
+            animation: pulse 2s infinite;
+        }
+
+        #status {
+            position: fixed;
+            top: 16px; left: 50%;
+            transform: translateX(-50%);
+            padding: 7px 18px;
+            background: rgba(0,6,22,.9);
+            border: 1px solid rgba(0,175,255,.4);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            font-family: monospace;
+            font-size: 11px;
+            color: rgba(0,205,255,.95);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity .3s;
+            white-space: nowrap;
+            max-width: 88vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #status.show { opacity: 1; }
+
+        #toast {
+            position: fixed;
+            bottom: 45%; left: 50%;
+            transform: translateX(-50%);
+            padding: 9px 20px;
+            background: rgba(0,30,90,.92);
+            border: 1px solid rgba(0,200,255,.5);
+            border-radius: 28px;
+            font-family: monospace;
+            font-size: 12px;
+            color: rgba(0,220,255,.95);
+            z-index: 200;
+            opacity: 0;
+            transition: opacity .18s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #toast.show { opacity: 1; }
+
+        #video-panel {
+            position: fixed;
+            bottom: 18px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 60;
+            opacity: 0;
+            transition: opacity .4s, transform .4s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #video-panel.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        .vp-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 24px;
+            background: rgba(0,6,22,.9);
+            border: 1px solid rgba(0,175,255,.35);
+            border-radius: 50px;
+            backdrop-filter: blur(14px);
+            font-family: monospace;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            color: rgba(0,200,255,.88);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .vp-pill:active { background: rgba(0,50,130,.6); }
+        #vp-icon { font-size: 18px; }
+
+        #perm-gate {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 9999;
+            background: linear-gradient(180deg, #000, #020a1c);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            transition: opacity .7s;
+        }
+        #perm-gate.fade {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .pg-logo {
+            font-family: monospace;
+            font-size: 10px;
+            letter-spacing: 3.5px;
+            color: rgba(0,175,255,.42);
+            text-align: center;
+        }
+        .pg-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            text-shadow: 0 0 26px rgba(0,175,255,.4);
+        }
+        .pg-sub {
+            font-size: 12px;
+            color: rgba(200,230,255,.48);
+            text-align: center;
+            line-height: 1.9;
+            max-width: 248px;
+        }
+        #btn-start {
+            padding: 14px 44px;
+            background: transparent;
+            border: 1.5px solid rgba(0,200,255,.62);
+            border-radius: 50px;
+            color: rgba(0,218,255,.95);
+            font-size: 15px;
+            font-family: monospace;
+            letter-spacing: 2.5px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #btn-start:disabled {
+            opacity: .4;
+            cursor: wait;
+        }
+    </style>
 </head>
 <body>
 
-  <div id="perm-gate">
-    <div class="pg-logo">AR BUSINESS CARD</div>
-    <div class="pg-title">AR 名片體驗</div>
-    <div class="pg-sub">請準備好實體名片<br><b>正面</b>→ 3D 立體資訊<br><b>背面</b>→ 精彩影片</div>
-    <button id="btn-start">▶ 開始體驗</button>
-  </div>
-
-  <canvas id="renderCanvas"></canvas>
-
-  <div id="scan-ov">
-    <div class="sbox">
-      <div class="sline"></div>
-      <div class="corn c-tl"></div><div class="corn c-tr"></div>
-      <div class="corn c-bl"></div><div class="corn c-br"></div>
+    <!-- 權限入口畫面 -->
+    <div id="perm-gate">
+        <div class="pg-logo">AR BUSINESS CARD</div>
+        <div class="pg-title">AR 名片體驗</div>
+        <div class="pg-sub">請準備好實體名片<br><b>正面</b>→ 3D 立體資訊<br><b>背面</b>→ 精彩影片</div>
+        <button id="btn-start">▶ 開始體驗</button>
     </div>
-    <div id="scan-label">AR READY<br>請對準名片正面或背面</div>
-  </div>
 
-  <div id="status"></div>
-  <div id="toast"></div>
+    <!-- Three.js 渲染畫布 -->
+    <canvas id="renderCanvas"></canvas>
 
-  <div id="video-panel">
-    <div class="vp-pill" id="vp-play-btn">
-      <span id="vp-icon">▶</span>
-      <span id="vp-txt">點擊 播放影片</span>
+    <!-- 掃描提示 -->
+    <div id="scan-ov">
+        <div class="sbox">
+            <div class="sline"></div>
+            <div class="corn c-tl"></div>
+            <div class="corn c-tr"></div>
+            <div class="corn c-bl"></div>
+            <div class="corn c-br"></div>
+        </div>
+        <div id="scan-label">AR READY<br>請對準名片正面或背面</div>
     </div>
-  </div>
 
-  <script>
-  // ═══ UI HELPERS ════════════════════════════════════════
-  let _stT, _toastT;
-  function showSt(msg, dur = 2800) {
-    const e = document.getElementById('status');
-    e.textContent = msg; e.classList.add('show');
-    clearTimeout(_stT); _stT = setTimeout(() => e.classList.remove('show'), dur);
-  }
-  function showToast(msg) {
-    const e = document.getElementById('toast');
-    e.textContent = msg; e.classList.add('show');
-    clearTimeout(_toastT); _toastT = setTimeout(() => e.classList.remove('show'), 1600);
-  }
+    <!-- 狀態提示 -->
+    <div id="status"></div>
+    <!-- Toast -->
+    <div id="toast"></div>
 
-  // ═══ 3D CANVAS HELPERS (用於建立浮動平面) ════════════════
+    <!-- 影片控制面板 -->
+    <div id="video-panel">
+        <div class="vp-pill" id="vp-play-btn">
+            <span id="vp-icon">▶</span>
+            <span id="vp-txt">點擊 播放影片</span>
+        </div>
+    </div>
 
-  // 繪製圓角矩形路徑
-  function rrect(ctx, x, y, w, h, r) {
-    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r);
-    ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
-  }
+    <script>
+        // ═══ UI HELPERS ════════════════════════════════════════
+        let _stT, _toastT;
+        function showSt(msg, dur = 2800) {
+            const e = document.getElementById('status');
+            e.textContent = msg;
+            e.classList.add('show');
+            clearTimeout(_stT);
+            _stT = setTimeout(() => e.classList.remove('show'), dur);
+        }
+        function showToast(msg) {
+            const e = document.getElementById('toast');
+            e.textContent = msg;
+            e.classList.add('show');
+            clearTimeout(_toastT);
+            _toastT = setTimeout(() => e.classList.remove('show'), 1600);
+        }
 
-  // 建立基於 CanvasTexture 的 Mesh
-  function mkCanvasMesh(planeW, planeH, texW, texH, drawFn) {
-    const cv = document.createElement('canvas');
-    cv.width = texW; cv.height = texH;
-    const ctx = cv.getContext('2d');
-    drawFn(ctx, texW, texH);
-    const tex = new THREE.CanvasTexture(cv);
-    tex.minFilter = tex.magFilter = THREE.LinearFilter;
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(planeW, planeH),
-      new THREE.MeshBasicMaterial({
-        map: tex, transparent: true, side: THREE.DoubleSide,
-        depthWrite: false // 浮動元素通常不需要寫入深度，避免透明遮擋問題
-      })
-    );
-    return mesh;
-  }
+        // ═══ 3D CANVAS HELPERS ════════════════════════════════
+        function rrect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.arcTo(x + w, y, x + w, y + r, r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+            ctx.lineTo(x + r, y + h);
+            ctx.arcTo(x, y + h, x, y + h - r, r);
+            ctx.lineTo(x, y + r);
+            ctx.arcTo(x, y, x + r, y, r);
+            ctx.closePath();
+        }
 
-  // 非同步建立圓形個人照片 Mesh
-  function mkCirclePhoto(size, url, cb) {
-    const SZ = 256;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = SZ;
-      const ctx = cv.getContext('2d');
-      // 裁切圓形
-      ctx.beginPath(); ctx.arc(SZ / 2, SZ / 2, SZ / 2 - 4, 0, Math.PI * 2); ctx.clip();
-      ctx.drawImage(img, 0, 0, SZ, SZ);
-      // 外圈發光
-      ctx.beginPath(); ctx.arc(SZ / 2, SZ / 2, SZ / 2 - 4, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(0,220,255,0.9)'; ctx.lineWidth = 8;
-      ctx.shadowColor = 'rgba(0,255,255,0.8)'; ctx.shadowBlur = 15;
-      ctx.stroke();
-      const tex = new THREE.CanvasTexture(cv);
-      tex.minFilter = tex.magFilter = THREE.LinearFilter;
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(size, size),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
-      );
-      cb(mesh);
-    };
-    img.src = url;
-  }
+        function mkCanvasMesh(planeW, planeH, texW, texH, drawFn) {
+            const cv = document.createElement('canvas');
+            cv.width = texW; cv.height = texH;
+            const ctx = cv.getContext('2d');
+            drawFn(ctx, texW, texH);
+            const tex = new THREE.CanvasTexture(cv);
+            tex.minFilter = tex.magFilter = THREE.LinearFilter;
+            return new THREE.Mesh(
+                new THREE.PlaneGeometry(planeW, planeH),
+                new THREE.MeshBasicMaterial({
+                    map: tex,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                })
+            );
+        }
 
-  // ═══ BUILD 3D 立體浮動內容 ═════════════════════════════
-  //
-  // 此函數不再建立一個單一的大面板，而是將頭像、文字、按鈕
-  // 拆分成獨立的 Mesh，並設置不同的 Z 軸坐標，使其"浮"在空中。
-  //
-  // XR8 圖像追蹤 scale=1 代表目標物理寬度為 1 個世界單位。
-  // ─────────────────────────────────────────────────────
-  function buildCardContent(group, interactables) {
+        function mkCirclePhoto(size, url, cb) {
+            const SZ = 256;
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const cv = document.createElement('canvas');
+                cv.width = cv.height = SZ;
+                const ctx = cv.getContext('2d');
 
-    // ── Z軸深度設定 (使物體浮現的核心) ──
-    const Z_PHOTO = 0.12;   // 頭像最浮
-    const Z_TEXT  = 0.10;   // 姓名職稱次之
-    const Z_BTN   = 0.08;   // 聯絡按鈕
-    const Z_SOC   = 0.06;   // 社群圖示最貼近名片
+                // 圓形裁切
+                ctx.beginPath();
+                ctx.arc(SZ / 2, SZ / 2, SZ / 2 - 4, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(img, 0, 0, SZ, SZ);
 
-    // 1. 個人照片 (圓形，非同步)
-    // 位於名片右側，浮動最高
-    mkCirclePhoto(0.24, AR_CONFIG.profile.photo, mesh => {
-      mesh.position.set(0.28, 0.22, Z_PHOTO);
-      group.add(mesh);
-    });
+                // 發光邊框
+                ctx.beginPath();
+                ctx.arc(SZ / 2, SZ / 2, SZ / 2 - 4, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(0,220,255,0.9)';
+                ctx.lineWidth = 8;
+                ctx.shadowColor = 'rgba(0,255,255,0.8)';
+                ctx.shadowBlur = 15;
+                ctx.stroke();
 
-    // 2. 姓名 (獨立浮動平面)
-    const nameMesh = mkCanvasMesh(0.5, 0.1, 512, 100, (ctx, W, H) => {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 60px sans-serif';
-      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      // 添加文字陰影增加立體感
-      ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 10;
-      ctx.fillText(AR_CONFIG.profile.name, W - 10, H / 2);
-    });
-    nameMesh.position.set(-0.05, 0.24, Z_TEXT);
-    group.add(nameMesh);
+                const tex = new THREE.CanvasTexture(cv);
+                tex.minFilter = tex.magFilter = THREE.LinearFilter;
 
-    // 3. 職稱
-    const titleMesh = mkCanvasMesh(0.5, 0.06, 512, 60, (ctx, W, H) => {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = 'rgba(0,230,255,1)';
-      ctx.font = '36px monospace';
-      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(AR_CONFIG.profile.title.toUpperCase(), W - 10, H / 2);
-    });
-    titleMesh.position.set(-0.05, 0.15, Z_TEXT);
-    group.add(titleMesh);
+                const mesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(size, size),
+                    new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+                );
+                cb(mesh);
+            };
+            img.src = url;
+        }
 
-    // 4. 分隔線 (半透明浮動)
-    const lineMesh = mkCanvasMesh(0.9, 0.006, 512, 4, (ctx, W, H) => {
-      ctx.fillStyle = 'rgba(0,200,255,0.6)';
-      ctx.fillRect(0, 0, W, H);
-    });
-    lineMesh.position.set(0, 0.08, Z_TEXT);
-    group.add(lineMesh);
+        // ═══ BUILD 3D 立體浮動內容 ═════════════════════════════
+        function buildCardContent(group, interactables) {
+            const Z_PHOTO = 0.12;
+            const Z_TEXT  = 0.10;
+            const Z_BTN   = 0.08;
+            const Z_SOC   = 0.06;
 
-    // 5. 聯絡按鈕 (每一個都是獨立 Mesh)
-    const btnW = 0.9;
-    const btnH = 0.11;
-    AR_CONFIG.contacts.forEach((c, i) => {
-      const yPos = 0.0 - i * 0.14; // 垂直排列
+            // 1. 個人照片
+            mkCirclePhoto(0.24, AR_CONFIG.profile.photo, mesh => {
+                mesh.position.set(0.28, 0.22, Z_PHOTO);
+                group.add(mesh);
+            });
 
-      const btn = mkCanvasMesh(btnW, btnH, 512, 64, (ctx, W, H) => {
-        ctx.clearRect(0, 0, W, H);
-        // 按鈕背景 (半透明藍色)
-        rrect(ctx, 2, 2, W - 4, H - 4, 15);
-        ctx.fillStyle = 'rgba(0,30,80,0.85)'; ctx.fill();
-        ctx.strokeStyle = 'rgba(0,180,255,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+            // 2. 姓名
+            const nameMesh = mkCanvasMesh(0.5, 0.1, 512, 100, (ctx, W, H) => {
+                ctx.clearRect(0, 0, W, H);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 60px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 10;
+                ctx.fillText(AR_CONFIG.profile.name, W - 10, H / 2);
+            });
+            nameMesh.position.set(-0.05, 0.24, Z_TEXT);
+            group.add(nameMesh);
 
-        // 左側彩色裝飾條
-        rrect(ctx, 2, 2, 10, H - 4, 10); ctx.fillStyle = c.accent; ctx.fill();
+            // 3. 職稱
+            const titleMesh = mkCanvasMesh(0.5, 0.06, 512, 60, (ctx, W, H) => {
+                ctx.clearRect(0, 0, W, H);
+                ctx.fillStyle = 'rgba(0,230,255,1)';
+                ctx.font = '36px monospace';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(AR_CONFIG.profile.title.toUpperCase(), W - 10, H / 2);
+            });
+            titleMesh.position.set(-0.05, 0.15, Z_TEXT);
+            group.add(titleMesh);
 
-        // Icon
-        ctx.fillStyle = '#ffffff'; ctx.font = '36px sans-serif';
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.fillText(c.icon, 30, H / 2);
+            // 4. 分隔線
+            const lineMesh = mkCanvasMesh(0.9, 0.006, 512, 4, (ctx, W, H) => {
+                ctx.fillStyle = 'rgba(0,200,255,0.6)';
+                ctx.fillRect(0, 0, W, H);
+            });
+            lineMesh.position.set(0, 0.08, Z_TEXT);
+            group.add(lineMesh);
 
-        // Label
-        ctx.font = 'bold 30px sans-serif'; ctx.fillStyle = '#e0faff';
-        ctx.fillText(c.label, 80, H / 2);
+            // 5. 聯絡按鈕
+            const btnW = 0.9;
+            const btnH = 0.11;
+            AR_CONFIG.contacts.forEach((c, i) => {
+                const yPos = 0.0 - i * 0.14;
 
-        // 箭頭
-        ctx.font = '24px monospace'; ctx.fillStyle = 'rgba(0,255,255,0.5)';
-        ctx.textAlign = 'right'; ctx.fillText('›', W - 30, H / 2);
-      });
+                const btn = mkCanvasMesh(btnW, btnH, 512, 64, (ctx, W, H) => {
+                    ctx.clearRect(0, 0, W, H);
+                    rrect(ctx, 2, 2, W - 4, H - 4, 15);
+                    ctx.fillStyle = 'rgba(0,30,80,0.85)'; ctx.fill();
+                    ctx.strokeStyle = 'rgba(0,180,255,0.5)'; ctx.lineWidth = 2; ctx.stroke();
 
-      btn.position.set(0, yPos, Z_BTN);
-      group.add(btn);
-      // 加入可互動列表 (用於 Raycaster 點擊)
-      interactables.push({ mesh: btn, url: c.url, label: c.label });
-    });
+                    rrect(ctx, 2, 2, 10, H - 4, 10);
+                    ctx.fillStyle = c.accent; ctx.fill();
 
-    // 6. 社群圖示 (浮動於下方，獨立 Mesh)
-    const socW = 0.15;
-    const socStartX = -(AR_CONFIG.socials.length - 1) * 0.1 / 2 - (AR_CONFIG.socials.length * socW) / 2;
-    const texLdr = new THREE.TextureLoader();
-    texLdr.crossOrigin = 'anonymous';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '36px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(c.icon, 30, H / 2);
 
-    AR_CONFIG.socials.forEach((s, i) => {
-      const xPos = -0.3 + i * 0.2;
-      const yPos = -0.45;
+                    ctx.font = 'bold 30px sans-serif';
+                    ctx.fillStyle = '#e0faff';
+                    ctx.fillText(c.label, 80, H / 2);
 
-      // 預設圓角框Mesh
-      const fb = mkCanvasMesh(socW, socW, 128, 128, (ctx, W, H) => {
-        rrect(ctx, 4, 4, W - 8, H - 8, 20);
-        ctx.fillStyle = 'rgba(0,20,50,0.8)'; ctx.fill();
-        ctx.strokeStyle = 'rgba(0,180,255,0.3)'; ctx.lineWidth = 3; ctx.stroke();
-      });
-      fb.position.set(xPos, yPos, Z_SOC);
-      group.add(fb);
-      interactables.push({ mesh: fb, url: s.url, label: s.label });
+                    ctx.font = '24px monospace';
+                    ctx.fillStyle = 'rgba(0,255,255,0.5)';
+                    ctx.textAlign = 'right';
+                    ctx.fillText('›', W - 30, H / 2);
+                });
 
-      // 非同步載入圖示紋理，覆蓋到Mesh上
-      texLdr.load(s.img, tex => {
-        tex.minFilter = tex.magFilter = THREE.LinearFilter;
-        fb.material.map = tex;
-        fb.material.color.set('#ffffff'); // 確保顏色正確顯示
-        fb.material.needsUpdate = true;
-      });
-    });
-  }
+                btn.position.set(0, yPos, Z_BTN);
+                group.add(btn);
+                interactables.push({ mesh: btn, url: c.url, label: c.label });
+            });
 
-  // ═══ RACCOON LOADER (修正修正錨定邏輯) ════════════════════
-  function loadRaccoon(group, cb) {
-    const loader = new THREE.GLTFLoader();
-    loader.load(
-      AR_CONFIG.raccoonSrc,
-      gltf => {
-        const model = gltf.scene;
-        const mixer = new THREE.AnimationMixer(model);
-        gltf.animations.forEach(clip => mixer.clipAction(clip).play());
-        // 縮放並放置於名片左側，立體呈現
-        model.scale.setScalar(0.12);
-        model.position.set(-0.35, 0.0, 0); // 在名片基準面
-        // ★ 立體模型必須加入 cardGroup，才能跟著名片移動
-        group.add(model);
-        cb({ model, mixer });
-      }
-    );
-  }
+            // 6. 社群圖示
+            const texLdr = new THREE.TextureLoader();
+            texLdr.crossOrigin = 'anonymous';
 
-  // ═══════════════════════════════════════════════════════
-  // AR MODULE
-  // ═══════════════════════════════════════════════════════
-  function mkARModule(validTargets, indexedTargets) {
+            AR_CONFIG.socials.forEach((s, i) => {
+                const xPos = -0.3 + i * 0.2;
+                const yPos = -0.45;
 
-    // 建立 Target Name 與 Role (card/video) 的對映
-    const targetRoleMap = new Map();
-    const ROLES = ['card', 'video'];
-    indexedTargets.forEach((d, i) => {
-      if (d && ROLES[i]) targetRoleMap.set(d.name, ROLES[i]);
-    });
+                const fb = mkCanvasMesh(0.15, 0.15, 128, 128, (ctx, W, H) => {
+                    rrect(ctx, 4, 4, W - 8, H - 8, 20);
+                    ctx.fillStyle = 'rgba(0,20,50,0.8)'; ctx.fill();
+                    ctx.strokeStyle = 'rgba(0,180,255,0.3)'; ctx.lineWidth = 3; ctx.stroke();
+                });
+                fb.position.set(xPos, yPos, Z_SOC);
+                group.add(fb);
+                interactables.push({ mesh: fb, url: s.url, label: s.label });
 
-    // 3D 資源變數
-    let cardGroup, raccoonData = null;
-    let videoGroup, videoMesh, videoEl, videoTex;
-    let videoPlaying = false, videoHasInteracted = false;
+                texLdr.load(s.img, tex => {
+                    tex.minFilter = tex.magFilter = THREE.LinearFilter;
+                    fb.material.map = tex;
+                    fb.material.color.set('#ffffff');
+                    fb.material.needsUpdate = true;
+                });
+            });
+        }
 
-    // 按鈕互動 Raycaster
-    const interactables = [];
-    const raycaster     = new THREE.Raycaster();
-    let   _camera       = null;
+        // ═══ RACCOON LOADER ═══════════════════════════════════
+        function loadRaccoon(group, cb) {
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                AR_CONFIG.raccoonSrc,
+                gltf => {
+                    const model = gltf.scene;
+                    const mixer = new THREE.AnimationMixer(model);
+                    gltf.animations.forEach(clip => mixer.clipAction(clip).play());
 
-    const clock   = new THREE.Clock();
-    const scanEl  = document.getElementById('scan-ov');
-    const vpPanel = document.getElementById('video-panel');
-    const vpIcon  = document.getElementById('vp-icon');
-    const vpTxt   = document.getElementById('vp-txt');
+                    model.scale.setScalar(0.12);
+                    model.position.set(-0.35, 0, 0);
+                    group.add(model);
+                    cb({ model, mixer });
+                }
+            );
+        }
 
-    // 追蹤狀態
-    const S = { cardVis: false, videoVis: false };
+        // ═══ AR MODULE (XR8) ═══════════════════════════════════
+        function mkARModule(validTargets, indexedTargets) {
+            const targetRoleMap = new Map();
+            const ROLES = ['card', 'video'];
+            indexedTargets.forEach((d, i) => {
+                if (d && ROLES[i]) targetRoleMap.set(d.name, ROLES[i]);
+            });
 
-    // ── 處理 tap 點擊互動 ────────────────────────────────
-    function handleTap(cx, cy) {
-      if (!S.cardVis || !_camera || interactables.length === 0) return;
-      const canvas = document.getElementById('renderCanvas');
-      const rect   = canvas.getBoundingClientRect();
-      const ndcX   = ((cx - rect.left) / rect.width)  * 2 - 1;
-      const ndcY   = -((cy - rect.top)  / rect.height) * 2 + 1;
-      raycaster.setFromCamera({ x: ndcX, y: ndcY }, _camera);
-      const hits = raycaster.intersectObjects(interactables.map(i => i.mesh));
-      if (hits.length === 0) return;
-      // 找出被點擊 Mesh 對應的資料
-      const item = interactables.find(i => i.mesh === hits[0].object);
-      if (!item) return;
+            let cardGroup, raccoonData = null;
+            let videoGroup, videoMesh, videoEl, videoTex;
+            let videoPlaying = false, videoHasInteracted = false;
 
-      // 簡單按鈕動畫回饋
-      item.mesh.scale.set(1.1, 1.1, 1.1);
-      setTimeout(() => item.mesh.scale.set(1, 1, 1), 150);
-      showToast('▶ ' + item.label);
-      setTimeout(() => {
-        if (item.url.startsWith('http')) window.open(item.url, '_blank', 'noopener');
-        else window.location.href = item.url;
-      }, 50);
-    }
-    window.addEventListener('touchend', e => {
-      if (e.target.tagName === 'CANVAS') {
-        const t = e.changedTouches[0]; if (t) handleTap(t.clientX, t.clientY);
-      }
-    });
+            const interactables = [];
+            const raycaster = new THREE.Raycaster();
+            let _camera = null;
 
-    // ── 影片控制 ──────────────────────────────────────
-    document.getElementById('vp-play-btn').addEventListener('click', e => {
-      e.stopPropagation();
-      if (!videoEl) return;
-      if (!videoHasInteracted) { videoEl.muted = false; videoHasInteracted = true; }
-      if (videoPlaying) {
-        videoEl.pause(); videoPlaying = false;
-        vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
-      } else {
-        videoEl.play().then(() => {
-          videoPlaying = true;
-          vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片';
+            const clock = new THREE.Clock();
+            const scanEl = document.getElementById('scan-ov');
+            const vpPanel = document.getElementById('video-panel');
+            const vpIcon = document.getElementById('vp-icon');
+            const vpTxt = document.getElementById('vp-txt');
+
+            const S = { cardVis: false, videoVis: false };
+
+            // Tap 互動
+            function handleTap(cx, cy) {
+                if (!S.cardVis || !_camera || interactables.length === 0) return;
+                const canvas = document.getElementById('renderCanvas');
+                const rect = canvas.getBoundingClientRect();
+                const ndcX = ((cx - rect.left) / rect.width) * 2 - 1;
+                const ndcY = -((cy - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera({ x: ndcX, y: ndcY }, _camera);
+                const hits = raycaster.intersectObjects(interactables.map(i => i.mesh));
+                if (hits.length === 0) return;
+
+                const item = interactables.find(i => i.mesh === hits[0].object);
+                if (!item) return;
+
+                item.mesh.scale.set(1.1, 1.1, 1.1);
+                setTimeout(() => item.mesh.scale.set(1, 1, 1), 150);
+                showToast('▶ ' + item.label);
+
+                setTimeout(() => {
+                    if (item.url.startsWith('http')) window.open(item.url, '_blank', 'noopener');
+                    else window.location.href = item.url;
+                }, 50);
+            }
+            window.addEventListener('touchend', e => {
+                if (e.target.tagName === 'CANVAS') {
+                    const t = e.changedTouches[0];
+                    if (t) handleTap(t.clientX, t.clientY);
+                }
+            });
+
+            // 影片控制
+            document.getElementById('vp-play-btn').addEventListener('click', e => {
+                e.stopPropagation();
+                if (!videoEl) return;
+                if (!videoHasInteracted) {
+                    videoEl.muted = false;
+                    videoHasInteracted = true;
+                }
+                if (videoPlaying) {
+                    videoEl.pause();
+                    videoPlaying = false;
+                    vpIcon.textContent = '▶';
+                    vpTxt.textContent = '點擊 播放影片';
+                } else {
+                    videoEl.play().then(() => {
+                        videoPlaying = true;
+                        vpIcon.textContent = '⏸';
+                        vpTxt.textContent = '點擊 暫停影片';
+                    });
+                }
+            });
+
+            function applyPose(group, detail) {
+                const { position: p, rotation: r, scale: s } = detail;
+                group.position.set(p.x, p.y, p.z);
+                group.quaternion.set(r.x, r.y, r.z, r.w);
+                group.scale.setScalar(s);
+            }
+
+            function onFound({ detail }) {
+                const role = targetRoleMap.get(detail.name);
+                if (role === 'card') {
+                    applyPose(cardGroup, detail);
+                    cardGroup.visible = true;
+                    S.cardVis = true;
+                    scanEl.classList.add('hidden');
+                    showSt('🦝 名片正面！');
+                } else if (role === 'video') {
+                    applyPose(videoGroup, detail);
+                    videoGroup.visible = true;
+                    S.videoVis = true;
+                    scanEl.classList.add('hidden');
+                    vpPanel.classList.add('show');
+                    if (!videoHasInteracted && videoEl) {
+                        videoEl.muted = true;
+                        videoEl.currentTime = 0;
+                        videoEl.play().then(() => {
+                            videoPlaying = true;
+                            vpIcon.textContent = '⏸';
+                            vpTxt.textContent = '點擊 暫停影片';
+                        });
+                    }
+                    showSt('🎬 名片背面！影片播放');
+                }
+            }
+
+            function onUpdated({ detail }) {
+                const role = targetRoleMap.get(detail.name);
+                if (role === 'card') {
+                    applyPose(cardGroup, detail);
+                    if (!S.cardVis) { cardGroup.visible = true; S.cardVis = true; }
+                } else if (role === 'video') {
+                    applyPose(videoGroup, detail);
+                    if (!S.videoVis) { videoGroup.visible = true; S.videoVis = true; }
+                }
+            }
+
+            function onLost({ detail }) {
+                const role = targetRoleMap.get(detail?.name || '');
+                if (role === 'card') {
+                    S.cardVis = false;
+                    cardGroup.visible = false;
+                } else if (role === 'video') {
+                    S.videoVis = false;
+                    videoGroup.visible = false;
+                    vpPanel.classList.remove('show');
+                    if (videoEl) { videoEl.pause(); videoPlaying = false; }
+                    vpIcon.textContent = '▶';
+                    vpTxt.textContent = '點擊 播放影片';
+                }
+                if (!S.cardVis && !S.videoVis) scanEl.classList.remove('hidden');
+            }
+
+            return {
+                name: 'ar-card',
+                onStart() {
+                    const { scene, renderer, camera } = XR8.Threejs.xrScene();
+                    _camera = camera;
+
+                    renderer.autoClear = false;
+                    renderer.outputEncoding = THREE.sRGBEncoding;
+
+                    scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+                    const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+                    dir.position.set(0, 1, 1);
+                    scene.add(dir);
+
+                    // 正面 Group
+                    cardGroup = new THREE.Group();
+                    cardGroup.visible = false;
+                    scene.add(cardGroup);
+                    loadRaccoon(cardGroup, data => { raccoonData = data; });
+                    buildCardContent(cardGroup, interactables);
+
+                    // 背面 Group (影片)
+                    videoGroup = new THREE.Group();
+                    videoGroup.visible = false;
+                    scene.add(videoGroup);
+
+                    videoEl = document.createElement('video');
+                    videoEl.src = AR_CONFIG.videoSrc;
+                    videoEl.loop = true;
+                    videoEl.muted = true;
+                    videoEl.playsInline = true;
+                    videoEl.crossOrigin = 'anonymous';
+                    videoEl.setAttribute('webkit-playsinline', 'true');
+
+                    videoTex = new THREE.VideoTexture(videoEl);
+                    videoTex.minFilter = videoTex.magFilter = THREE.LinearFilter;
+                    videoTex.format = THREE.RGBAFormat;
+
+                    videoMesh = new THREE.Mesh(
+                        new THREE.PlaneGeometry(1.5, 1.5 * (9 / 16)),
+                        new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide })
+                    );
+                    videoGroup.add(videoMesh);
+
+                    clock.start();
+                    setTimeout(() => showSt('請對準名片正面或背面', 4000), 900);
+                },
+
+                onUpdate() {
+                    const delta = clock.getDelta();
+                    if (raccoonData?.mixer) raccoonData.mixer.update(delta);
+                    if (raccoonData?.model && cardGroup.visible) {
+                        raccoonData.model.position.y = Math.sin(clock.elapsedTime * 1.5) * 0.02;
+                    }
+                },
+
+                listeners: [
+                    { event: 'reality.imagefound',   process: onFound },
+                    { event: 'reality.imageupdated', process: onUpdated },
+                    { event: 'reality.imagelost',    process: onLost }
+                ]
+            };
+        }
+
+        // ═══ MAIN ═════════════════════════════════════════════
+        let _xrReady = false;
+        let _targetData = null;
+
+        window.addEventListener('xrloaded', () => _xrReady = true);
+
+        async function preloadTargets() {
+            const data = [];
+            for (const path of AR_CONFIG.targetJsonPaths) {
+                try {
+                    const r = await fetch(path);
+                    if (!r.ok) throw new Error();
+                    data.push(await r.json());
+                } catch {
+                    data.push(null);
+                }
+            }
+            _targetData = data;
+        }
+
+        async function requestPermissions() {
+            for (const E of [DeviceMotionEvent, DeviceOrientationEvent]) {
+                if (E && typeof E.requestPermission === 'function') {
+                    try { await E.requestPermission(); } catch {}
+                }
+            }
+        }
+
+        async function startXR8() {
+            let w = 0;
+            while ((!_targetData || !_xrReady) && w < 10000) {
+                await new Promise(r => setTimeout(r, 200));
+                w += 200;
+            }
+            if (!_xrReady) {
+                alert('AR Engine 載入失敗，請重新整理');
+                return;
+            }
+
+            const validTargets = _targetData.filter(Boolean);
+            const indexedData = _targetData;
+
+            XR8.XrController.configure({
+                disableWorldTracking: true,
+                imageTargetData: validTargets,
+            });
+
+            XR8.addCameraPipelineModules([
+                XR8.GlTextureRenderer.pipelineModule(),
+                XR8.Threejs.pipelineModule(),
+                XR8.XrController.pipelineModule(),
+                mkARModule(validTargets, indexedData)
+            ]);
+
+            XR8.run({ canvas: document.getElementById('renderCanvas') });
+        }
+
+        document.getElementById('btn-start').addEventListener('click', async function () {
+            this.disabled = true;
+            this.textContent = '授權中…';
+            await requestPermissions();
+
+            const gate = document.getElementById('perm-gate');
+            gate.classList.add('fade');
+            setTimeout(() => gate.style.display = 'none', 700);
+
+            startXR8();
         });
-      }
-    });
 
-    // ── 錨定跟隨函數 ──────────────────────────────────
-    // ★(重要) 將目標圖片的 Pose 應用到 Three.js Group
-    function applyPose(group, detail) {
-      const { position: p, rotation: r, scale: s } = detail;
-      group.position.set(p.x, p.y, p.z);
-      group.quaternion.set(r.x, r.y, r.z, r.w);
-      group.scale.setScalar(s);
-    }
-
-    function onFound({ detail }) {
-      const role = targetRoleMap.get(detail.name);
-      if (role === 'card') {
-        applyPose(cardGroup, detail); // ★ 立即錨定
-        cardGroup.visible = true; S.cardVis = true;
-        scanEl.classList.add('hidden');
-        showSt('🦝 名片正面！');
-      } else if (role === 'video') {
-        applyPose(videoGroup, detail); // ★ 立即錨定
-        videoGroup.visible = true; S.videoVis = true;
-        scanEl.classList.add('hidden');
-        vpPanel.classList.add('show');
-        if (!videoHasInteracted && videoEl) {
-          videoEl.muted = true; videoEl.currentTime = 0;
-          videoEl.play().then(() => {
-            videoPlaying = true;
-            vpIcon.textContent = '⏸'; vpTxt.textContent = '點擊 暫停影片';
-          });
-        }
-        showSt('🎬 名片背面！影片播放');
-      }
-    }
-
-    function onUpdated({ detail }) {
-      const role = targetRoleMap.get(detail.name);
-      // ★ 每一幀更新 Pose，實現平滑跟隨真實名片移動
-      if (role === 'card') {
-        applyPose(cardGroup, detail);
-        if (!S.cardVis) { cardGroup.visible = true; S.cardVis = true; }
-      } else if (role === 'video') {
-        applyPose(videoGroup, detail);
-        if (!S.videoVis) { videoGroup.visible = true; S.videoVis = true; }
-      }
-    }
-
-    function onLost({ detail }) {
-      const role = targetRoleMap.get(detail?.name || '');
-      if (role === 'card') {
-        S.cardVis = false; cardGroup.visible = false;
-      } else if (role === 'video') {
-        S.videoVis = false; videoGroup.visible = false;
-        vpPanel.classList.remove('show');
-        if (videoEl) { videoEl.pause(); videoPlaying = false; }
-        vpIcon.textContent = '▶'; vpTxt.textContent = '點擊 播放影片';
-      }
-      if (!S.cardVis && !S.videoVis) scanEl.classList.remove('hidden');
-    }
-
-    return {
-      name: 'ar-card',
-      onStart() {
-        const { scene, renderer, camera } = XR8.Threejs.xrScene();
-        _camera = camera;
-
-        // 黑屏修復配置
-        renderer.autoClear = false;
-        renderer.outputEncoding = THREE.sRGBEncoding; // 改善色彩
-
-        // 燈光
-        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-        const dir = new THREE.DirectionalLight(0xffffff, 0.5); dir.position.set(0,1,1);
-        scene.add(dir);
-
-        // ── 名片正面 Group (浮動資訊和浣熊) ────────────
-        cardGroup = new THREE.Group();
-        cardGroup.visible = false;
-        scene.add(cardGroup);
-
-        // ★ 加載 3D 模型並加入到 cardGroup 錨定
-        loadRaccoon(cardGroup, data => { raccoonData = data; });
-
-        // ★ 加載拆解後的立體資訊 Mesh 並加入到 cardGroup 錨定
-        buildCardContent(cardGroup, interactables);
-
-        // ── 名片背面 Group (影片) ─────────────────────
-        videoGroup = new THREE.Group();
-        videoGroup.visible = false;
-        scene.add(videoGroup);
-
-        videoEl = document.createElement('video');
-        videoEl.src = AR_CONFIG.videoSrc; videoEl.loop = true; videoEl.muted = true;
-        videoEl.playsInline = true; videoEl.crossOrigin = 'anonymous';
-        videoEl.setAttribute('webkit-playsinline', 'true');
-
-        videoTex = new THREE.VideoTexture(videoEl);
-        videoTex.minFilter = videoTex.magFilter = THREE.LinearFilter;
-        videoTex.format = THREE.RGBAFormat;
-
-        // 16:9 影片平面 (寬度與名片相當)
-        videoMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.5, 1.5 * (9 / 16)),
-          new THREE.MeshBasicMaterial({ map: videoTex, side: THREE.DoubleSide })
-        );
-        videoGroup.add(videoMesh);
-
-        clock.start();
-        setTimeout(() => showSt('請對準名片正面或背面', 4000), 900);
-      },
-
-      onUpdate() {
-        const delta = clock.getDelta();
-        // 浣熊動畫更新
-        if (raccoonData?.mixer) raccoonData.mixer.update(delta);
-        // ★ 浣熊上下浮動正弦波 (增加生動感)
-        if (raccoonData?.model && cardGroup.visible) {
-          raccoonData.model.position.y = 0.0 + Math.sin(clock.elapsedTime * 1.5) * 0.02;
-        }
-      },
-
-      listeners: [
-        { event: 'reality.imagefound',   process: onFound   },
-        { event: 'reality.imageupdated', process: onUpdated },
-        { event: 'reality.imagelost',    process: onLost    },
-      ],
-    };
-  }
-
-  // ═══ MAIN — Permission Gate ════════════════════════════
-  let _xrReady = false;
-  let _targetData = null;
-
-  window.addEventListener('xrloaded', () => _xrReady = true);
-
-  // 預載 Target JSON 資料
-  async function preloadTargets() {
-    const data = [];
-    for (const path of AR_CONFIG.targetJsonPaths) {
-      try {
-        const r = await fetch(path);
-        if (!r.ok) throw 'Err'; data.push(await r.json());
-      } catch { data.push(null); }
-    }
-    _targetData = data;
-  }
-
-  async function requestPermissions() {
-    for (const E of [DeviceMotionEvent, DeviceOrientationEvent]) {
-      if (E && typeof E.requestPermission === 'function') {
-        try { await E.requestPermission(); } catch {}
-      }
-    }
-  }
-
-  async function startXR8() {
-    let w = 0;
-    while ((!_targetData || !_xrReady) && w < 10000) {
-      await new Promise(r => setTimeout(r, 200)); w += 200;
-    }
-    if (!_xrReady) { alert('AR Engine fail'); return; }
-
-    const validTargets = _targetData.filter(Boolean);
-    const indexedData  = _targetData; // 含 null 以保持索引對應 Role
-
-    XR8.XrController.configure({
-      disableWorldTracking: true, // 僅影像追蹤
-      imageTargetData: validTargets,
-    });
-
-    XR8.addCameraPipelineModules([
-      XR8.GlTextureRenderer.pipelineModule(),
-      XR8.Threejs.pipelineModule(),
-      XR8.XrController.pipelineModule(),
-      mkARModule(validTargets, indexedData), // 啟動自定義 AR 邏輯
-    ]);
-
-    XR8.run({ canvas: document.getElementById('renderCanvas') });
-  }
-
-  document.getElementById('btn-start').addEventListener('click', async function () {
-    this.disabled = true; this.textContent = '授權中…';
-    await requestPermissions();
-    const gate = document.getElementById('perm-gate');
-    gate.classList.add('fade');
-    setTimeout(() => gate.style.display = 'none', 700);
-    startXR8();
-  });
-
-  window.addEventListener('load', preloadTargets);
-  </script>
-<style>
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #000;
-  overflow: hidden;
-}
-</style>
-</head>
-<body>
-<a-scene
-  mindar-image="imageTargetSrc: https://raw.githubusercontent.com/isaoinvest/name-card/main/KKtargets.mind; warmupTolerance: 5; missTolerance: 600; filterMinCF: 0.000001; filterBeta: 500"
-  color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false"
->
-  <a-assets>
-    <img id="profile" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Big%20Head%20Shot.png" crossorigin="anonymous" alt="Profile Photo" />
-    <img id="website" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/website2.png" crossorigin="anonymous" alt="Website Button" />
-    <img id="Email" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/EMAIL2.png" crossorigin="anonymous" alt="Email Button" />
-    <img id="phone" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/phone2.png" crossorigin="anonymous" alt="Phone Button" />
-    <img id="image-LINE" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Line-1.png" crossorigin="anonymous" alt="LINE Button" />
-    <img id="image-Youtube" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Youtube-1.png" crossorigin="anonymous" alt="YouTube Button" />
-    <img id="image-IG" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Instagram-1.png" crossorigin="anonymous" alt="Instagram Button" />
-    <img id="image-FB" src="https://raw.githubusercontent.com/isaoinvest/name-card/main/Facebook-1.png" crossorigin="anonymous" alt="Facebook Button" />
-    <video id="video1" src="https://pub-ac80c6d0a305452bbe0bdfcec65b6a2c.r2.dev/NEWS.mp4" loop playsinline crossorigin="anonymous" preload="auto"></video>
-    <a-asset-item id="raccoonModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/band-example/raccoon/scene.gltf"></a-asset-item>
-  </a-assets>
-
-  <!-- 按照官方文檔的相機配置 -->
-  <a-camera 
-    position="0 0 0" 
-    look-controls="enabled: false" 
-    cursor="fuse: false; rayOrigin: mouse;" 
-    raycaster="near: 10; far: 10000; objects: .clickable">
-  </a-camera>
-
-  <a-entity mindar-image-target="targetIndex: 0">
-    <a-entity
-      text="value: Red Panda Keeper\nMingHsun Li; color: #FFF"
-      position="1.2 0.68 -1.5"
-      scale="2 2 2"
-    ></a-entity>
-    
-    <!-- 小浣熊模型 - 按照官方文檔設置 -->
-    <a-gltf-model
-      id="raccoon-model"
-      rotation="0 0 0"
-      position="-0.25 -0.15 0"
-      scale="0.09 0.09 0.09"
-      src="#raccoonModel"
-      animation-mixer
-    ></a-gltf-model>
-    
-    <a-image
-      src="#profile"
-      width="0.55"
-      height="0.55"
-      position="0.6 0.9 -1.5"
-      rotation="0 0 0"
-    ></a-image>
-    
-    <!-- 按鈕元素 - 確保正確的class和屬性 -->
-    <a-image
-      id="btn-website"
-      src="#website"
-      width="0.65"
-      height="0.25"
-      position="0.6 0.4 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-image>
-    
-    <a-image
-      id="btn-email"
-      src="#Email"
-      width="0.65"
-      height="0.25"
-      position="0.6 0.1 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-image>
-    
-    <a-image
-      id="btn-phone"
-      src="#phone"
-      width="0.65"
-      height="0.23"
-      position="0.6 -0.2 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-image>
-    
-    <a-image
-      id="btn-line"
-      src="#image-LINE"
-      width="0.3"
-      height="0.3"
-      position="0.6 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-image>
-    
-    <a-image
-      id="btn-youtube"
-      src="#image-Youtube"
-      width="0.3"
-      height="0.3"
-      position="0.2 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-image>
-    
-    <a-image
-      id="btn-ig"
-      src="#image-IG"
-      width="0.3"
-      height="0.3"
-      position="-0.2 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-image>
-    
-    <a-image
-      id="btn-fb"
-      src="#image-FB"
-      width="0.3"
-      height="0.3"
-      position="-0.6 -0.65 -1.5"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-image>
-  </a-entity>
-
-  <a-entity id="video-target" mindar-image-target="targetIndex: 1">
-    <a-video
-      id="ar-video"
-      src="#video1"
-      height="1.05"
-      width="1.5"
-      position="0 0 0"
-      rotation="0 0 0"
-      class="clickable"
-      opacity="1"
-    ></a-video>
-  </a-entity>
-</a-scene>
+        window.addEventListener('load', preloadTargets);
+    </script>
 </body>
 </html>
