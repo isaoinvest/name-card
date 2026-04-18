@@ -149,7 +149,7 @@
   }
 
   function createContactButtonCanvas(contact) {
-    const W = 720, H = 130;
+    const W = 360, H = 130;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
@@ -188,7 +188,10 @@
   function mkARModule(indexedData) {
     const nameToRole = new Map();
     const ROLES = ['card', 'video'];
-    indexedData.forEach((d, i) => { if (d) nameToRole.set(d.name, ROLES[i]); });
+    // 以 JSON 的實際 .name 欄位為 key，配對角色；跳過 null（fetch 失敗的項目）
+    indexedData.forEach((d, i) => {
+      if (d && d.name && ROLES[i]) nameToRole.set(d.name, ROLES[i]);
+    });
 
     let cardGroup, raccoonData = null, raccoonMesh = null;
     let videoGroup, videoMesh, videoEl, videoTex;
@@ -219,17 +222,17 @@
       const originalScale = obj.scale.x;
 
       if (obj === raccoonMesh) {
-        // 浣熊可愛反應
-        obj.position.y += 0.18;
+        // 浣熊可愛反應（local position，model 為 cardGroup 子物件）
+        const baseY = 0.38;
         let rot = 0;
         const anim = setInterval(() => {
           rot += 0.28;
           obj.rotation.y = rot;
-          obj.position.y = 0.38 + 0.18 * Math.sin(rot * 3);
+          obj.position.y = baseY + 0.18 * Math.sin(rot * 3);
           if (rot > Math.PI * 2.2) {
             clearInterval(anim);
             obj.rotation.y = 0;
-            obj.position.y = 0.38;
+            obj.position.y = baseY;
           }
         }, 16);
         showToast('🦝 浣熊跟你打招呼～');
@@ -248,7 +251,6 @@
     }
 
     function create3DNameCardUI() {
-      const SCALE = 1 / 780;
       const loader = new THREE.TextureLoader();
 
       if (raccoonData?.model) {
@@ -309,10 +311,10 @@
       AR_CONFIG.contacts.forEach((contact, i) => {
         const btnCanvas = createContactButtonCanvas(contact);
         const mesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.45, 0.28),
+          new THREE.PlaneGeometry(0.72, 0.28),
           new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(btnCanvas), transparent: true, side: THREE.DoubleSide})
         );
-        mesh.position.set(0.92, 0.31 - i * 0.32, 0.115);
+        mesh.position.set(0.68, 0.31 - i * 0.32, 0.115);
         mesh.userData = { type: 'contact', url: contact.url };
         interactiveObjects.push(mesh);
         cardGroup.add(mesh);
@@ -442,7 +444,7 @@
         if (raccoonData?.model && cardGroup.visible) {
           raccoonData.model.position.y = 0.38 + Math.sin(clock.elapsedTime * 1.35) * 0.032;
         }
-        if (videoTex) videoTex.needsUpdate = true;
+        if (videoTex && videoPlaying) videoTex.needsUpdate = true;
       },
 
       listeners: [
@@ -450,7 +452,8 @@
           const role = nameToRole.get(detail.name);
           if (!role) return;
           scanEl.classList.add('hidden');
-          clearAll();
+          // 若切換到不同角色才清除，避免同一目標重新識別時閃爍
+          if (S.active !== role) clearAll();
           if (role === 'card') {
             cardGroup.position.copy(detail.position);
             cardGroup.quaternion.copy(detail.rotation);
@@ -483,7 +486,10 @@
             videoGroup.scale.setScalar(detail.scale);
           }
         }},
-        {event: 'reality.imagelost', process: () => {
+        {event: 'reality.imagelost', process: ({detail}) => {
+          // 只有當消失的目標正好是目前 active 的那個才清除，防止兩個目標互相干擾
+          const role = nameToRole.get(detail.name);
+          if (!role || role !== S.active) return;
           scanEl.classList.remove('hidden');
           clearAll();
         }}
@@ -500,8 +506,9 @@
     for (const path of AR_CONFIG.targetJsonPaths) {
       try {
         const r = await fetch(path);
-        if (r.ok) indexed.push(JSON.parse(await r.text()));
-      } catch(e) {}
+        // 保留 null 佔位，確保 index 與 ROLES 對應正確
+        indexed.push(r.ok ? JSON.parse(await r.text()) : null);
+      } catch(e) { indexed.push(null); }
     }
     _loadResult = {valid: indexed.filter(Boolean), indexed};
   }
